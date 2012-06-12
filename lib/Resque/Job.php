@@ -1,17 +1,18 @@
 <?php
-require_once dirname(__FILE__) . '/Event.php';
-require_once dirname(__FILE__) . '/Job/Status.php';
-require_once dirname(__FILE__) . '/Job/DontPerform.php';
+
+namespace Resque;
+
+use Resque\Job\Status;
+use Resque\Job\DontPerform;
 
 /**
  * Resque job.
  *
- * @package		Resque/Job
  * @author		Chris Boulton <chris.boulton@interspire.com>
  * @copyright	(c) 2010 Chris Boulton
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class Resque_Job
+class Job
 {
 	/**
 	 * @var string The name of the queue that this job belongs to.
@@ -19,7 +20,7 @@ class Resque_Job
 	public $queue;
 
 	/**
-	 * @var Resque_Worker Instance of the Resque worker running this job.
+	 * @var Worker Instance of the Resque worker running this job.
 	 */
 	public $worker;
 
@@ -43,54 +44,6 @@ class Resque_Job
 	{
 		$this->queue = $queue;
 		$this->payload = $payload;
-	}
-
-	/**
-	 * Create a new job and save it to the specified queue.
-	 *
-	 * @param string $queue The name of the queue to place the job in.
-	 * @param string $class The name of the class that contains the code to execute the job.
-	 * @param array $args Any optional arguments that should be passed when the job is executed.
-	 * @param boolean $monitor Set to true to be able to monitor the status of a job.
-	 *
-	 * @return string
-	 */
-	public static function create($queue, $class, $args = null, $monitor = false)
-	{
-		if($args !== null && !is_array($args)) {
-			throw new InvalidArgumentException(
-				'Supplied $args must be an array.'
-			);
-		}
-		$id = md5(uniqid('', true));
-		Resque::push($queue, array(
-			'class'	=> $class,
-			'args'	=> array($args),
-			'id'	=> $id,
-		));
-
-		if($monitor) {
-			Resque_Job_Status::create($id);
-		}
-
-		return $id;
-	}
-
-	/**
-	 * Find the next available job from the specified queue and return an
-	 * instance of Resque_Job for it.
-	 *
-	 * @param string $queue The name of the queue to check for a job in.
-	 * @return null|object Null when there aren't any waiting jobs, instance of Resque_Job when a job was found.
-	 */
-	public static function reserve($queue)
-	{
-		$payload = Resque::pop($queue);
-		if(!is_array($payload)) {
-			return false;
-		}
-
-		return new Resque_Job($queue, $payload);
 	}
 
 	/**

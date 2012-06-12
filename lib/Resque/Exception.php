@@ -1,4 +1,8 @@
 <?php
+
+namespace Resque;
+
+
 /**
  * Resque exception.
  *
@@ -7,7 +11,6 @@
  * @copyright	(c) 2010 Chris Boulton
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class Resque_Exception extends Exception
+class Exception extends Exception
 {
 }
-?>
