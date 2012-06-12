@@ -1,3 +1,11 @@
+## 1.2-vend:2.0.0 (Unreleased) ##
+
+* Now requires PHP 5.3+
+* Namespaces: All resque code loaded from the Resque namespace. This makes the project PSR-0 compatible. An SPLClassLoader is included for convenience.
+* Redisent removed: Resque is now free of dependencies on any Redis client library. (i.e. you can use it with Predis, phpredis, redisent, etc.)
+* Hidden global state removed: connection state is no longer hidden behind Resque::redis() static call. The Resque object is now instantiated like any normal object, and uses dependency injection in its constructor.
+* The whole library should be more extensible and composable.
+
 ## 1.2 (Unreleased) ##
 
 * Allow alternate redis database to be selected when calling setBackend by supplying a second argument (patrickbajao)
