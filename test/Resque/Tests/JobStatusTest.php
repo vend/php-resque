@@ -1,8 +1,10 @@
 <?php
 require_once dirname(__FILE__) . '/bootstrap.php';
 
+use Resque\Job\Status;
+
 /**
- * Resque_Job_Status tests.
+ * Status tests.
  *
  * @package		Resque/Tests
  * @author		Chris Boulton <chris.boulton@interspire.com>
@@ -22,7 +24,7 @@ class Resque_Tests_JobStatusTest extends Resque_Tests_TestCase
 	public function testJobStatusCanBeTracked()
 	{
 		$token = Resque::enqueue('jobs', 'Test_Job', null, true);
-		$status = new Resque_Job_Status($token);
+		$status = new Status($token);
 		$this->assertTrue($status->isTracking());
 	}
 
@@ -30,52 +32,52 @@ class Resque_Tests_JobStatusTest extends Resque_Tests_TestCase
 	{
 		$token = Resque::enqueue('jobs', 'Test_Job', null, true);
 		$job = Resque_Job::reserve('jobs');
-		$this->assertEquals(Resque_Job_Status::STATUS_WAITING, $job->getStatus());
+		$this->assertEquals(Status::STATUS_WAITING, $job->getStatus());
 	}
 
 	public function testQueuedJobReturnsQueuedStatus()
 	{
 		$token = Resque::enqueue('jobs', 'Test_Job', null, true);
-		$status = new Resque_Job_Status($token);
-		$this->assertEquals(Resque_Job_Status::STATUS_WAITING, $status->get());
+		$status = new Status($token);
+		$this->assertEquals(Status::STATUS_WAITING, $status->get());
 	}
 	public function testRunningJobReturnsRunningStatus()
 	{
 		$token = Resque::enqueue('jobs', 'Failing_Job', null, true);
 		$job = $this->worker->reserve();
 		$this->worker->workingOn($job);
-		$status = new Resque_Job_Status($token);
-		$this->assertEquals(Resque_Job_Status::STATUS_RUNNING, $status->get());
+		$status = new Status($token);
+		$this->assertEquals(Status::STATUS_RUNNING, $status->get());
 	}
 
 	public function testFailedJobReturnsFailedStatus()
 	{
 		$token = Resque::enqueue('jobs', 'Failing_Job', null, true);
 		$this->worker->work(0);
-		$status = new Resque_Job_Status($token);
-		$this->assertEquals(Resque_Job_Status::STATUS_FAILED, $status->get());
+		$status = new Status($token);
+		$this->assertEquals(Status::STATUS_FAILED, $status->get());
 	}
 
 	public function testCompletedJobReturnsCompletedStatus()
 	{
 		$token = Resque::enqueue('jobs', 'Test_Job', null, true);
 		$this->worker->work(0);
-		$status = new Resque_Job_Status($token);
-		$this->assertEquals(Resque_Job_Status::STATUS_COMPLETE, $status->get());
+		$status = new Status($token);
+		$this->assertEquals(Status::STATUS_COMPLETE, $status->get());
 	}
 
 	public function testStatusIsNotTrackedWhenToldNotTo()
 	{
 		$token = Resque::enqueue('jobs', 'Test_Job', null, false);
-		$status = new Resque_Job_Status($token);
+		$status = new Status($token);
 		$this->assertFalse($status->isTracking());
 	}
 
 	public function testStatusTrackingCanBeStopped()
 	{
-		Resque_Job_Status::create('test');
-		$status = new Resque_Job_Status('test');
-		$this->assertEquals(Resque_Job_Status::STATUS_WAITING, $status->get());
+		Status::create('test');
+		$status = new Status('test');
+		$this->assertEquals(Status::STATUS_WAITING, $status->get());
 		$status->stop();
 		$this->assertFalse($status->get());
 	}
@@ -97,6 +99,6 @@ class Resque_Tests_JobStatusTest extends Resque_Tests_TestCase
 
 		// Now check the status of the new job
 		$newJob = Resque_Job::reserve('jobs');
-		$this->assertEquals(Resque_Job_Status::STATUS_WAITING, $newJob->getStatus());
+		$this->assertEquals(Status::STATUS_WAITING, $newJob->getStatus());
 	}
 }

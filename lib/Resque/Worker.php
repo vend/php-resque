@@ -6,6 +6,7 @@ use Resque\Stat;
 use Resque\Event;
 use Resque\Job;
 use Resque\Job\DirtyExitException;
+use Resque\Job\Status;
 
 use Predis\Client;
 
@@ -45,7 +46,7 @@ abstract class Worker
     protected $paused = false;
 
     /**
-     * @var Resque_Job Current job, if any, being processed by this worker.
+     * @var Job Current job, if any, being processed by this worker.
      */
     protected $currentJob = null;
 
@@ -64,7 +65,7 @@ abstract class Worker
         $this->resque->log($message, $priority);
     }
 
-    abstract protected function dispatchEvent($event, $job);
+    abstract protected function notifyEvent($event, $job);
     abstract protected function getClient();
     abstract protected function createJobInstance($queue, $payload);
 
@@ -175,7 +176,7 @@ abstract class Worker
             }
 
             $this->log('got ' . $job);
-            $this->dispatchEvent('beforeFork', $job);
+            $this->notifyEvent('beforeFork', $job);
             $this->workingOn($job);
 
             $this->child = $this->fork();
@@ -201,7 +202,7 @@ abstract class Worker
                 pcntl_wait($status);
                 $exitStatus = pcntl_wexitstatus($status);
                 if($exitStatus !== 0) {
-                    $job->fail(new Resque_Job_DirtyExitException(
+                    $job->fail(new Job_DirtyExitException(
                         'Job exited with exit code ' . $exitStatus
                     ));
                 }
@@ -217,12 +218,12 @@ abstract class Worker
     /**
      * Process a single job.
      *
-     * @param Resque_Job $job The job to be processed.
+     * @param Job $job The job to be processed.
      */
-    public function perform(Resque_Job $job)
+    public function perform(Job $job)
     {
         try {
-            $this->dispatchEvent('afterFork', $job);
+            $this->notifyEvent('afterFork', $job);
             $job->perform();
         }
         catch(Exception $e) {
@@ -231,14 +232,14 @@ abstract class Worker
             return;
         }
 
-        $job->updateStatus(Resque_Job_Status::STATUS_COMPLETE);
+        $job->updateStatus(Status::STATUS_COMPLETE);
         $this->log('done ' . $job);
     }
 
     /**
      * Attempt to find a job from the top of one of the queues for this worker.
      *
-     * @return object|boolean Instance of Resque_Job if a job is found, false if not.
+     * @return object|boolean Instance of Job if a job is found, false if not.
      */
     public function reserve()
     {
@@ -284,7 +285,7 @@ abstract class Worker
             return $this->queues;
         }
 
-        $queues = Resque::queues();
+        $queues = $this->resque->queues();
         sort($queues);
         return $queues;
     }
@@ -317,7 +318,7 @@ abstract class Worker
     {
         $this->registerSigHandlers();
         $this->pruneDeadWorkers();
-        $this->dispatchEvent('beforeFirstFork', $this);
+        $this->notifyEvent('beforeFirstFork', $this);
         $this->registerWorker();
     }
 
@@ -474,7 +475,7 @@ abstract class Worker
     public function unregisterWorker()
     {
         if(is_object($this->currentJob)) {
-            $this->currentJob->fail(new Resque_Job_DirtyExitException);
+            $this->currentJob->fail(new Job_DirtyExitException);
         }
 
         $id = (string)$this;
@@ -488,13 +489,13 @@ abstract class Worker
     /**
      * Tell Redis which job we're currently working on.
      *
-     * @param object $job Resque_Job instance containing the job we're working on.
+     * @param object $job Job instance containing the job we're working on.
      */
-    public function workingOn(Resque_Job $job)
+    public function workingOn(Job $job)
     {
         $job->worker = $this;
         $this->currentJob = $job;
-        $job->updateStatus(Resque_Job_Status::STATUS_RUNNING);
+        $job->updateStatus(Status::STATUS_RUNNING);
         $data = json_encode(array(
             'queue' => $job->queue,
             'run_at' => strftime('%a %b %d %H:%M:%S %Z %Y'),
