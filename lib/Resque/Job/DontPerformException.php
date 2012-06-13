@@ -11,6 +11,6 @@ use \Exception;
  * @copyright	(c) 2010 Chris Boulton
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class DontPerform extends Exception
+class DontPerformException extends Exception
 {
 }

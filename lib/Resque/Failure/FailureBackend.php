@@ -1,4 +1,7 @@
 <?php
+
+namespace Resque\Failure;
+
 /**
  * Interface that all failure backends should implement.
  *
@@ -7,7 +10,7 @@
  * @copyright	(c) 2010 Chris Boulton
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-interface Resque_Failure_Interface
+interface FailureBackend
 {
 	/**
 	 * Initialize a failed job class and save it (where appropriate).
@@ -19,4 +22,3 @@ interface Resque_Failure_Interface
 	 */
 	public function __construct($payload, $exception, $worker, $queue);
 }
-?>
