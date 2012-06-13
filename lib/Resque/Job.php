@@ -2,6 +2,7 @@
 
 namespace Resque;
 
+use Resque\Failure;
 use Resque\Job\Status;
 use Resque\Job\DontPerformException;
 
@@ -82,7 +83,6 @@ class Job
 		if (!isset($this->payload['args'])) {
 			return array();
 		}
-
 		return $this->payload['args'][0];
 	}
 
@@ -156,21 +156,22 @@ class Job
 	 */
 	public function fail($exception)
 	{
-		Resque_Event::trigger('onFailure', array(
+		$this->worker->notifyEvent('onFailure', array(
 			'exception' => $exception,
 			'job' => $this,
 		));
 
 		$this->updateStatus(Status::STATUS_FAILED);
-		require_once dirname(__FILE__) . '/Failure.php';
-		Resque_Failure::create(
+
+		Failure::create(
 			$this->payload,
 			$exception,
 			$this->worker,
 			$this->queue
 		);
-		Resque_Stat::incr('failed');
-		Resque_Stat::incr('failed:' . $this->worker);
+
+		$this->worker->getResque()->getStatistic('failed')->incr();
+		$this->worker->getStatistic('failed')->incr();
 	}
 
 	/**

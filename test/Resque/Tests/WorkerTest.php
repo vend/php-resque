@@ -65,7 +65,7 @@ class Resque_Tests_WorkerTest extends Resque_Tests_TestCase
 		Resque::enqueue('jobs', 'Test_Job');
 		$worker->work(0);
 		$worker->work(0);
-		$this->assertEquals(0, Resque_Stat::get('processed'));
+		$this->assertEquals(0, Statistic::get('processed'));
 	}
 
 	public function testResumedWorkerPicksUpJobs()
@@ -74,10 +74,10 @@ class Resque_Tests_WorkerTest extends Resque_Tests_TestCase
 		$worker->pauseProcessing();
 		Resque::enqueue('jobs', 'Test_Job');
 		$worker->work(0);
-		$this->assertEquals(0, Resque_Stat::get('processed'));
+		$this->assertEquals(0, Statistic::get('processed'));
 		$worker->unPauseProcessing();
 		$worker->work(0);
-		$this->assertEquals(1, Resque_Stat::get('processed'));
+		$this->assertEquals(1, Statistic::get('processed'));
 	}
 
 	public function testWorkerCanWorkOverMultipleQueues()
@@ -248,6 +248,6 @@ class Resque_Tests_WorkerTest extends Resque_Tests_TestCase
 		$worker->workingOn($job);
 		$worker->unregisterWorker();
 
-		$this->assertEquals(1, Resque_Stat::get('failed'));
+		$this->assertEquals(1, Statistic::get('failed'));
 	}
 }

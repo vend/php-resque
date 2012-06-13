@@ -112,8 +112,8 @@ class Resque_Tests_JobTest extends Resque_Tests_TestCase
 
 		$this->worker->perform($job);
 
-		$this->assertEquals(1, Resque_Stat::get('failed'));
-		$this->assertEquals(1, Resque_Stat::get('failed:'.$this->worker));
+		$this->assertEquals(1, Statistic::get('failed'));
+		$this->assertEquals(1, Statistic::get('failed:'.$this->worker));
 	}
 
 	/**

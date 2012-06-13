@@ -2,7 +2,7 @@
 
 namespace Resque;
 
-use Resque\Stat;
+use Resque\Statistic;
 use Resque\Event;
 use Resque\Job;
 use Resque\Job\DirtyExitException;
@@ -127,10 +127,7 @@ abstract class Worker
         return (bool)$this->resque->getClient()->sismember('workers', $workerId);
     }
 
-    protected function getStatistic($name)
-    {
-        return new Statistic($this->resque->getClient(), $name);
-    }
+
 
     /**
      * The primary loop for a worker which when called on an instance starts
@@ -163,8 +160,6 @@ abstract class Worker
                 }
 
                 // If no job was found, we sleep for $interval before continuing and checking again
-                $this->log('Sleeping for ' . $interval, 'info');
-
                 if ($this->paused) {
                     $this->updateProcLine('Paused');
                 } else {
@@ -251,8 +246,6 @@ abstract class Worker
 
         $job = false;
         foreach($queues as $queue) {
-            $this->log('Checking ' . $queue, 'info');
-
             $payload = $this->resque->pop($queue);
             if (!is_array($payload)) {
                 continue;
@@ -511,8 +504,8 @@ abstract class Worker
     public function doneWorking()
     {
         $this->currentJob = null;
-        $this->getStatistic()->incr('processed');
-        $this->getStatistic()->incr('processed:' . (string)$this);
+        $this->resque->getStatistic('processed')->incr();
+        $this->getStatistic('processed')->incr();
         $this->resque->getClient()->del('worker:' . (string)$this);
     }
 
@@ -548,8 +541,8 @@ abstract class Worker
      * @param string $stat Statistic to fetch.
      * @return int Statistic value.
      */
-    public function getStat($stat)
+    public function getStatistic($name)
     {
-        return $this->getStatistic()->get($stat . ':' . $this);
+        return new Statistic($this->resque, $name. ':' . (string)$this);
     }
 }

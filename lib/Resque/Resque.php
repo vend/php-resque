@@ -80,7 +80,7 @@ abstract class Resque
 
         $this->push($queue, array(
             'class' => $class,
-            'args'  => array($args),
+            'args'  => $args,
             'id'    => $id,
         ));
 
@@ -103,5 +103,16 @@ abstract class Resque
             $queues = array();
         }
         return $queues;
+    }
+
+    /**
+     * Gets a statistic
+     *
+     * @param string $name
+     * @return \Resque\Statistic
+     */
+    public function getStatistic($name)
+    {
+        return new Statistic($this, $name);
     }
 }

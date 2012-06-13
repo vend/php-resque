@@ -11,7 +11,7 @@ class Statistic
 {
     const KEY = 'stat:';
 
-    protected $client;
+    protected $resque;
     protected $statistic;
 
     /**
@@ -20,9 +20,9 @@ class Statistic
      * @param Client $client A Redis client
      * @param string $statistic
      */
-    public function __construct(Client $client, $statistic)
+    public function __construct(Resque $resque, $statistic)
     {
-        $this->client = $client;
+        $this->resque = $resque;
         $this->statistic = $statistic;
     }
 
@@ -42,9 +42,9 @@ class Statistic
 	 * @param string $stat The name of the statistic to get the stats for.
 	 * @return mixed Value of the statistic.
 	 */
-	public static function get()
+	public function get()
 	{
-		return (int)$this->client->get($this->getKey());
+		return (int)$this->resque->getClient()->get($this->getKey());
 	}
 
 	/**
@@ -54,9 +54,9 @@ class Statistic
 	 * @param int $by The amount to increment the statistic by.
 	 * @return boolean True if successful, false if not.
 	 */
-	public static function incr($by = 1)
+	public function incr($by = 1)
 	{
-		return (bool)$this->client->incrby($this->getKey(), $by);
+		return (bool)$this->resque->getClient()->incrby($this->getKey(), $by);
 	}
 
 	/**
@@ -66,9 +66,9 @@ class Statistic
 	 * @param int $by The amount to decrement the statistic by.
 	 * @return boolean True if successful, false if not.
 	 */
-	public static function decr($by = 1)
+	public function decr($by = 1)
 	{
-		return (bool)$this->client->decrby($this->getKey(), $by);
+		return (bool)$this->resque->getClient()->decrby($this->getKey(), $by);
 	}
 
 	/**
@@ -77,8 +77,8 @@ class Statistic
 	 * @param string $stat The name of the statistic to delete.
 	 * @return boolean True if successful, false if not.
 	 */
-	public static function clear()
+	public function clear()
 	{
-		return (bool)$this->client->del($this->getKey());
+		return (bool)$this->resque->getClient()->del($this->getKey());
 	}
 }
