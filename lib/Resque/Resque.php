@@ -15,9 +15,18 @@ abstract class Resque
 {
     const VERSION = '1.1-predis';
 
+    const QUEUE_KEY = 'queue:';
+    const QUEUES_KEY = 'queues';
+
     abstract public function getClient();
     abstract public function reconnect();
     abstract public function log($message, $priority = 'info');
+    abstract public function getKey($key);
+
+    protected function getQueueKey($queue)
+    {
+        return $this->getKey(self::QUEUE_KEY . $queue);
+    }
 
     /**
      * Push a job to the end of a specific queue. If the queue does not
@@ -28,8 +37,8 @@ abstract class Resque
      */
     public function push($queue, $item)
     {
-        $this->getClient()->sadd('queues', $queue);
-        $this->getClient()->rpush('queue:' . $queue, json_encode($item));
+        $this->getClient()->sadd($this->getKey(self::QUEUES_KEY), $queue);
+        $this->getClient()->rpush($this->getQueueKey($queue), json_encode($item));
     }
 
     /**
@@ -41,7 +50,7 @@ abstract class Resque
      */
     public function pop($queue)
     {
-        $item = $this->getClient()->lpop('queue:' . $queue);
+        $item = $this->getClient()->lpop($this->getQueueKey($queue));
         if(!$item) {
             return;
         }
@@ -57,7 +66,7 @@ abstract class Resque
      */
     public function size($queue)
     {
-        return $this->getClient()->llen('queue:' . $queue);
+        return $this->getClient()->llen($this->getQueueKey($queue));
     }
 
     /**
@@ -99,7 +108,7 @@ abstract class Resque
      */
     public function queues()
     {
-        $queues = $this->getClient()->smembers('queues');
+        $queues = $this->getClient()->smembers($this->getKey(self::QUEUES_KEY));
         if(!is_array($queues)) {
             $queues = array();
         }

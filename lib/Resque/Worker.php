@@ -20,6 +20,8 @@ use \VendUtil;
  */
 abstract class Worker
 {
+    const WORKERS_KEY = 'workers';
+
     /**
      * @var string String identifying this worker.
      */
@@ -458,8 +460,8 @@ abstract class Worker
      */
     public function registerWorker()
     {
-        $this->resque->getClient()->sadd('workers', $this);
-        $this->resque->getClient()->set('worker:' . (string)$this . ':started', strftime('%a %b %d %H:%M:%S %Z %Y'));
+        $this->resque->getClient()->sadd($this->resque->getKey(self::WORKERS_KEY), $this);
+        $this->resque->getClient()->set($this->resque->getKey($this->getJobKey() . ':started'), strftime('%a %b %d %H:%M:%S %Z %Y'));
     }
 
     /**
@@ -468,13 +470,13 @@ abstract class Worker
     public function unregisterWorker()
     {
         if(is_object($this->currentJob)) {
-            $this->currentJob->fail(new Job_DirtyExitException);
+            $this->currentJob->fail(new DirtyExitException());
         }
 
         $id = (string)$this;
-        $this->resque->getClient()->srem('workers', $id);
-        $this->resque->getClient()->del('worker:' . $id);
-        $this->resque->getClient()->del('worker:' . $id . ':started');
+        $this->resque->getClient()->srem($this->resque->getKey(self::WORKERS_KEY), $id);
+        $this->resque->getClient()->del($this->getJobKey());
+        $this->resque->getClient()->del($this->getJobKey() . ':started');
         $this->getStatistic('processed:' . $id)->clear();
         $this->getStatistic('failed:' . $id)->clear();
     }
@@ -494,7 +496,7 @@ abstract class Worker
             'run_at' => strftime('%a %b %d %H:%M:%S %Z %Y'),
             'payload' => $job->payload
         ));
-        $this->resque->getClient()->set('worker:' . $job->worker, $data);
+        $this->resque->getClient()->set($this->getJobKey($job->worker), $data);
     }
 
     /**
@@ -506,7 +508,7 @@ abstract class Worker
         $this->currentJob = null;
         $this->resque->getStatistic('processed')->incr();
         $this->getStatistic('processed')->incr();
-        $this->resque->getClient()->del('worker:' . (string)$this);
+        $this->resque->getClient()->del($this->getJobKey());
     }
 
     /**
@@ -519,6 +521,14 @@ abstract class Worker
         return $this->id;
     }
 
+    protected function getJobKey($worker = null)
+    {
+        if ($worker == null) {
+            $worker = $this;
+        }
+        return $this->key('worker:' . (string)$worker);
+    }
+
     /**
      * Return an object describing the job this worker is currently working on.
      *
@@ -526,7 +536,7 @@ abstract class Worker
      */
     public function job()
     {
-        $job = $this->resque->getClient()->get('worker:' . $this);
+        $job = $this->resque->getClient()->get();
         if (!$job) {
             return array();
         }

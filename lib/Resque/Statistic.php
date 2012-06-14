@@ -33,7 +33,7 @@ class Statistic
      */
     protected function getKey()
     {
-        return self::KEY . $this->statistic;
+        return $this->resque->getKey(self::KEY . $this->statistic);
     }
 
 	/**
