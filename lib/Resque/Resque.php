@@ -16,6 +16,7 @@ abstract class Resque
     const VERSION = '1.1-predis';
 
     abstract public function getClient();
+    abstract public function reconnect();
     abstract public function log($message, $priority = 'info');
 
     /**
