@@ -60,10 +60,7 @@ abstract class Worker
      */
     protected $resque;
 
-    public function log($message, $priority = 'notice')
-    {
-        $this->resque->log($message, $priority);
-    }
+
 
     abstract protected function notifyEvent($event, $job);
     abstract protected function getClient();
@@ -116,6 +113,11 @@ abstract class Worker
         return $this->resque;
     }
 
+    public function log($message, $priority = 'notice')
+    {
+        $this->resque->log($message, $priority);
+    }
+
     /**
      * Given a worker ID, check if it is registered/valid.
      *
@@ -126,8 +128,6 @@ abstract class Worker
     {
         return (bool)$this->resque->getClient()->sismember('workers', $workerId);
     }
-
-
 
     /**
      * The primary loop for a worker which when called on an instance starts
