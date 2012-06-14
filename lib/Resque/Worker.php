@@ -526,7 +526,7 @@ abstract class Worker
         if ($worker == null) {
             $worker = $this;
         }
-        return $this->key('worker:' . (string)$worker);
+        return $this->getResque()->getKey('worker:' . (string)$worker);
     }
 
     /**
@@ -536,11 +536,11 @@ abstract class Worker
      */
     public function job()
     {
-        $job = $this->resque->getClient()->get();
+        $job = $this->resque->getClient()->get($this->getJobKey());
+
         if (!$job) {
             return array();
-        }
-        else {
+        } else {
             return json_decode($job, true);
         }
     }
