@@ -5,6 +5,9 @@ namespace Resque;
 use Resque\Exception;
 use Resque\Job;
 use Resque\Job\Status;
+use Resque\Util\Log;
+
+use \InvalidArgumentException;
 
 /**
  * Base Resque class
@@ -13,20 +16,53 @@ use Resque\Job\Status;
  */
 abstract class Resque
 {
-    const VERSION = '1.1-predis';
+    /**
+     * @var string
+     */
+    const VERSION = '1.1-generic';
 
+    /**#@+
+     * Protocol keys
+     *
+     * @var string
+     */
     const QUEUE_KEY = 'queue:';
     const QUEUES_KEY = 'queues';
+    /**#@-*/
 
+    /**
+     * Gets a Redis client
+     *
+     * The Redis client can be any object that implements a suitable subset
+     * of Redis commands.
+     *
+     * @return object (e.g. Predis\Client)
+     */
     abstract public function getClient();
-    abstract public function reconnect();
-    abstract public function log($message, $priority = 'info');
-    abstract public function getKey($key);
 
-    protected function getQueueKey($queue)
-    {
-        return $this->getKey(self::QUEUE_KEY . $queue);
-    }
+    /**
+     * Causes the client to reconnect to the Redis server
+     *
+     * @return void
+     */
+    abstract public function reconnect();
+
+    /**
+     * Logs a message
+     *
+     * @param string $message
+     * @param string $priority
+     * @return void
+     */
+    abstract public function log($message, $priority = Log::INFO);
+
+    /**
+     * Gets a namespaced/prefixed key for the given key suffix
+     *
+     * @param string $key
+     * @return string
+     */
+    abstract public function getKey($key);
 
     /**
      * Push a job to the end of a specific queue. If the queue does not
@@ -37,8 +73,11 @@ abstract class Resque
      */
     public function push($queue, $item)
     {
+        // Add the queue to the list of queues
         $this->getClient()->sadd($this->getKey(self::QUEUES_KEY), $queue);
-        $this->getClient()->rpush($this->getQueueKey($queue), json_encode($item));
+
+        // Add the job to the specified queue
+        $this->getClient()->rpush($this->getKey(self::QUEUE_KEY . $queue), json_encode($item));
     }
 
     /**
@@ -50,10 +89,12 @@ abstract class Resque
      */
     public function pop($queue)
     {
-        $item = $this->getClient()->lpop($this->getQueueKey($queue));
-        if(!$item) {
-            return;
+        $item = $this->getClient()->lpop($this->getKey(self::QUEUE_KEY . $queue));
+
+        if (!$item) {
+            return null;
         }
+
         return json_decode($item, true);
     }
 
@@ -66,7 +107,7 @@ abstract class Resque
      */
     public function size($queue)
     {
-        return $this->getClient()->llen($this->getQueueKey($queue));
+        return $this->getClient()->llen($this->getKey(self::QUEUE_KEY . $queue));
     }
 
     /**
@@ -109,9 +150,11 @@ abstract class Resque
     public function queues()
     {
         $queues = $this->getClient()->smembers($this->getKey(self::QUEUES_KEY));
-        if(!is_array($queues)) {
+
+        if (!is_array($queues)) {
             $queues = array();
         }
+
         return $queues;
     }
 
