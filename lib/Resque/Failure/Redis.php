@@ -34,6 +34,6 @@ class Redis implements FailureBackend
         $data->worker = (string)$worker;
         $data->queue = $queue;
         $data = json_encode($data);
-        $worker->getResque()->getClient()->rpush('failed', $data);
+        $worker->getResque()->getClient()->rpush($worker->getResque()->getKey('failed'), $data);
     }
 }
