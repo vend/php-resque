@@ -1,4 +1,4 @@
-## 1.2-vend:2.0.0 (Unreleased) ##
+## 2.0.0-beta ##
 
 * Now requires PHP 5.3+
 * Namespaces: All resque code loaded from the Resque namespace. This makes the project PSR-0 compatible. An SPLClassLoader is included for convenience.
