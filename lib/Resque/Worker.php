@@ -2,15 +2,16 @@
 
 namespace Resque;
 
+use Resque\Exception\Exception;
+
+use Resque\Util\Log;
+
 use Resque\Statistic;
 use Resque\Event;
 use Resque\Job;
 use Resque\Job\DirtyExitException;
 use Resque\Job\Status;
-
-use Predis\Client;
-
-use \VendUtil;
+use Resque\Util\Configurable;
 
 /**
  * Resque worker that handles checking queues for jobs, fetching them
@@ -18,7 +19,7 @@ use \VendUtil;
  *
  * @license    http://www.opensource.org/licenses/mit-license.php
  */
-abstract class Worker
+abstract class Worker extends Configurable
 {
     const WORKERS_KEY = 'workers';
 
@@ -31,11 +32,6 @@ abstract class Worker
      * @var array Array of all associated queues for this worker.
      */
     protected $queues = array();
-
-    /**
-     * @var string The hostname of this worker.
-     */
-    protected $hostname;
 
     /**
      * @var boolean True if on the next iteration, the worker should shutdown.
@@ -62,8 +58,6 @@ abstract class Worker
      */
     protected $resque;
 
-
-
     abstract protected function notifyEvent($event, $job);
     abstract protected function getClient();
     abstract protected function createJobInstance($queue, $payload);
@@ -82,8 +76,10 @@ abstract class Worker
      *
      * @param string|array $queues String with a single queue name, array with multiple.
      */
-    public function __construct(Resque $resque, $queues)
+    public function __construct(Resque $resque, $queues, array $options = array())
     {
+        parent::__construct($options);
+
         $this->resque = $resque;
 
         if (!is_array($queues)) {
@@ -91,13 +87,95 @@ abstract class Worker
         }
         $this->queues = $queues;
 
-        if(function_exists('gethostname')) {
-            $hostname = gethostname();
-        } else {
-            $hostname = php_uname('n');
+        $this->configureId();
+    }
+
+    /**
+     * Configures options for the worker
+     *
+     * @param array $options
+     *   Including
+     *     Worker identification
+     *       - server_name      => string, default is FQDN hostname
+     *       - pid              => int, default is current PID
+     *       - id_format        => string, suitable for sprintf
+     *       - id_location_preg => string, Perl compat regex, gets hostname and PID
+     *                               out of worker ID
+     *     Process matching
+     *       - ps        => string, path to ps command
+     *       - grep      => string, path to grep command (NB: /usr/bin on MacOS)
+     *       - ps_args   => array<string>, arguments to ps to return a list of PIDs
+     *                        and commands
+     *       - grep_args => array<string>, arguments to grep to match worker
+     *                        processes
+     *
+     *
+     * @see Resque\Util.Configurable::configure()
+     */
+    protected function configure(array $options)
+    {
+        $options = array_merge(array(
+            'server_name'      => null,
+            'pid'              => null,
+            'id_format'        => '%s:%d:%s',
+            'id_location_preg' => '/^([^:]+?):([0-9]+):/',
+            'ps'               => '/bin/ps',
+            'ps_args'          => array('-A', '-o', 'pid,command'),
+            'grep'             => '/bin/grep',
+            'grep_args'        => array('[r]esque[^-]')
+        ), $options);
+
+        parent::configure($options);
+
+        if (!$this->options['server_name']) {
+            $this->options['server_name'] = function_exists('gethostname') ? gethostname() : php_uname('n');
         }
-        $this->hostname = $hostname;
-        $this->id = $this->hostname . ':'.getmypid() . ':' . implode(',', $this->queues);
+
+        if (!$this->options['pid']) {
+            $this->options['pid'] = getmypid();
+        }
+    }
+
+    /**
+     * Configures the ID of this worker
+     */
+    protected function configureId()
+    {
+        $this->id = sprintf(
+            $this->options['id_format'],
+            $this->options['server_name'],
+            $this->options['pid'],
+            implode(',', $this->queues)
+        );
+    }
+
+    /**
+     * Parses a hostname and PID out of a string worker ID
+     *
+     * If you change the format of the ID, you should also change the definition
+     * of this method.
+     *
+     * @param string $id
+     * @return array(string hostname, int pid)
+     * @throws Exception
+     */
+    protected function getWorkerLocationFromId($id)
+    {
+        $matches = array();
+
+        if (!preg_match($this->options['id_location_preg'], $id, $matches)) {
+            throw new Exception('Incompatible ID format: unable to determine worker location');
+        }
+
+        if (!isset($matches[1]) || !$matches[1]) {
+            throw new Exception('Invalid ID: invalid hostname');
+        }
+
+        if (!isset($matches[2]) || !$matches[2] || !is_numeric($matches[2])) {
+            throw new Exception('Invalid ID: invalid PID');
+        }
+
+        return array($matches[1], (int)$matches[2]);
     }
 
     /**
@@ -107,15 +185,26 @@ abstract class Worker
      */
     public function setId($id)
     {
-        $this->id = $workerId;
+        $this->id = $id;
     }
 
+    /**
+     * Gives access to the main Resque system this worker belongs to
+     *
+     * @return Resque\Resque
+     */
     public function getResque()
     {
         return $this->resque;
     }
 
-    public function log($message, $priority = 'notice')
+    /**
+     * Logs a message
+     *
+     * @param string $message
+     * @param string $priority
+     */
+    public function log($message, $priority = Log::INFO)
     {
         $this->resque->log($message, $priority);
     }
@@ -126,9 +215,9 @@ abstract class Worker
      * @param string $workerId ID of the worker.
      * @return boolean True if the worker exists, false if not.
      */
-    public function exists($workerId)
+    public function exists($id)
     {
-        return (bool)$this->resque->getClient()->sismember('workers', $workerId);
+        return (bool)$this->resque->getClient()->sismember('workers', $id);
     }
 
     /**
@@ -309,7 +398,7 @@ abstract class Worker
     /**
      * Perform necessary actions to start a worker.
      */
-    private function startup()
+    protected function startup()
     {
         $this->registerSigHandlers();
         $this->pruneDeadWorkers();
@@ -339,7 +428,7 @@ abstract class Worker
      * QUIT: Shutdown after the current job finishes processing.
      * USR1: Kill the forked child immediately and continue processing jobs.
      */
-    private function registerSigHandlers()
+    protected function registerSigHandlers()
     {
         if(!function_exists('pcntl_signal')) {
             return;
@@ -435,24 +524,98 @@ abstract class Worker
      * This is a form of garbage collection to handle cases where the
      * server may have been killed and the Resque workers did not die gracefully
      * and therefore leave state information in Redis.
-     *
-     * @deprecated
      */
-    public function pruneDeadWorkers()
+    protected function pruneDeadWorkers()
     {
-        VendUtil::deprecated();
+        $pids = $this->getPids();
+        $ids  = $this->getIds();
+
+        foreach ($ids as $id) {
+            list($host, $pid) = $this->getWorkerLocationFromId($id);
+
+            // Ignore workers on other hosts
+            if ($host != $this->options['server_name']) {
+                continue;
+            }
+
+            // Ignore this process
+            if ($pid == $this->options['pid']) {
+                continue;
+            }
+
+            // Ignore workers still running
+            if (in_array($pid, $pids)) {
+                continue;
+            }
+
+            $this->log('Pruning dead worker: ' . $id, Log::WARNING);
+            $this->unregister($id);
+        }
     }
 
     /**
      * Return an array of process IDs for all of the Resque workers currently
      * running on this machine.
      *
+     * It'd be nice and much easier to use pgrep. It's not available on MacOS.
+     *
      * @return array Array of Resque worker process IDs.
-     * @deprecated
      */
-    public function workerPids()
+    protected function getPids()
     {
-        VendUtil::deprecated();
+        $ps = $this->options['ps'];
+        $ps_args = array_map(function ($v) {
+            return escapeshellarg($v);
+        }, $this->options['ps_args']);
+
+        $grep = $this->options['grep'];
+        $grep_args = array_map(function ($v) {
+            return escapeshellarg($v);
+        }, $this->options['grep_args']);
+
+        $command = sprintf(
+            '%s %s | %s %s',
+            escapeshellcmd($ps),
+            implode($ps_args, ' '),
+            escapeshellcmd($grep),
+            implode($grep_args, ' ')
+        );
+
+        $output = exec($command);
+
+        $pids = array();
+        $output = null;
+        $return = null;
+
+        exec($command, $output, $return);
+
+        if ($return !== 0) {
+            $this->log('Unable to determine worker PIDs');
+            return false;
+        }
+
+        foreach ($output as $line) {
+            $line = explode(' ', trim($line), 2);
+
+            if (!$line[0] || !is_numeric($line[0])) {
+                continue;
+            }
+
+            $pids[] = (int)$line[0];
+        }
+
+        return $pids;
+    }
+
+    protected function getIds()
+    {
+        $workers = $this->resque->getClient()->smembers($this->resque->getKey(self::WORKERS_KEY));
+
+        if (!is_array($workers)) {
+            $workers = array();
+        }
+
+        return $workers;
     }
 
     /**
@@ -473,7 +636,16 @@ abstract class Worker
             $this->currentJob->fail(new DirtyExitException());
         }
 
-        $id = (string)$this;
+        $this->unregister($this->id);
+    }
+
+    /**
+     * Unregisters the job with the given ID
+     *
+     * @param string $id
+     */
+    protected function unregister($id)
+    {
         $this->resque->getClient()->srem($this->resque->getKey(self::WORKERS_KEY), $id);
         $this->resque->getClient()->del($this->getJobKey());
         $this->resque->getClient()->del($this->getJobKey() . ':started');
