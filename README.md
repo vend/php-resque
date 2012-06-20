@@ -1,41 +1,96 @@
-php-resque: PHP Resque Worker (and Enqueue) [![Build Status](https://secure.travis-ci.org/chrisboulton/php-resque.png)](http://travis-ci.org/chrisboulton/php-resque)
-===========================================
+# Resque for PHP
+## 2.0.0-beta
 
 Resque is a Redis-backed library for creating background jobs, placing
 those jobs on multiple queues, and processing them later.
 
-## Background ##
+[php-resque](https://github.com/chrisboulton/php-resque) is a PHP port of the 
+Redis queuing strategy. This makes it compatible with the resque-web interface,
+and with other Resque libraries. (You could enqueue jobs from Ruby and dequeue
+them in PHP, for instance).
 
-Resque was pioneered and is developed by the fine folks at GitHub (yes,
-I am a kiss-ass), and written in Ruby. What you're seeing here is an
-almost direct port of the Resque worker and enqueue system to PHP.
+This library is a more generic version of php-resque, that has been refactored
+to remove global state and improve decoupling. This makes it easier to use and 
+extend.
 
-For more information on Resque, visit the official GitHub project:
- <http://github.com/defunkt/resque/>
+## Why this branch?
 
-For further information, see the launch post on the GitHub blog:
- <http://github.com/blog/542-introducing-resque>
+Unfortunately, several things about the original release of php-resque made it 
+a candidate for refactoring:
 
-The PHP port does NOT include its own web interface for viewing queue
-stats, as the data is stored in the exact same expected format as the
-Ruby version of Resque.
+* php-resque only supported the (rather limited) Redisent connection library. 
+  And has hard-coded this support by using static accessors. This meant more
+  advanced features such as replication and pipelining were unavailable.
+  
+  * Now, Resque for PHP supports any client object that implements a suitable
+    subset of Redis commands.  No type-checking is done on the passed in connection,
+    meaning you're free to use Predis, or whatever you like.
+    
+  * Redisent is no longer bundled along with this library. Feel free to continue
+    using it though.
+    
+* While the public API of `php-resque` was alright, the protected API was pretty 
+  much useless.
 
-The PHP port provides much the same features as the Ruby version:
+  * For instance, almost every property of the `Resque_Worker` is marked private.
+    Yet, logLevel (a property that could take only three valid values) was public.
+    So, the author did more to stop people extending the worker class than he 
+    did to stop people using it incorrectly. That is is bass ackwards.
 
-* Workers can be distributed between multiple machines
-* Includes support for priorities (queues)
-* Resilient to memory leaks (fork)
-* Expects failure
+* Important state (the underlying connection) was thrown into the global scope 
+  by hiding it behind static accessors (`Resque::redis()`). This makes things
+  easier for the library author (because he/she need not think about dependencies)
+  but also statically ties together the classes in the library: it makes 
+  testing and extending the library hard.
 
-It also supports the following additional features:
+  * There's no reason to do this: `Resque` instances should simply use DI and 
+    take a client connection as a required constructor argument.
+ 
+  * This improvement also allows the connection to be mocked without extending 
+    the `Resque` class.
+    
+  * And it lets you reuse your existing connection to Redis, if you have one.
+    No need to open a new connection just to enqueue a job.
+    
+* Logging was hard-coded to fwrite to stdout. This is unsuitable if you've 
+  already forked and closed STDOUT to daemonize (i.e. if you are using a different
+  forking model from the original Ruby library, such as a worker PHP-FPM pool).
+  Overriding this could be done in php-resque by extending the Worker. However,
+  with static methods such as `Resque_Worker::find()`, this is hard to do completely.
+  
+  * Logging is now provided by the Resque instance, and can be overriden easily.
+  
+  * Expected to allow passing in a closure soon.
 
-* Has the ability to track the status of jobs
-* Will mark a job as failed, if a forked child running a job does
-not exit with a status code as 0
-* Has built in support for `setUp` and `tearDown` methods, called
-pre and post jobs
+* Statistic classes were static for no good reason.
 
-## Requirements ##
+  * To work, statistics need a connection to Redis, a name, and several methods 
+    (get, set). State and methods to manipulate it? Sounds like a task for 
+    objects! *Not* just static methods, that don't encapsulate any of the state.
+    
+  * Because these were static calls, the `Resque_Stat` class was hard-coded into
+    several other classes, and could not be easily extended.
+    
+* php-resque was not PSR-0 compatible. Specifically, there's no top level namespace, 
+  because the Resque class is defined outside of the Resque directory.
+  
+  * Fair enough, because the original was PHP 5.2 compatible.
+
+  * The library is now fully namespaced and compatible with PSR-0. The top level
+    namespace is `Resque`.
+
+In practice, these difficulties meant php-resque was almost unextendable in its
+current state, and required major refactoring.
+
+## Other Changes
+
+* The events system has been removed. There is now little need for it.
+  It seems like the events system was just a workaround due to the poor 
+  extensibility of the Worker class. The library should allow you to extend any 
+  class you like, and no method should be too long or arduous to move into a
+  subclass.
+  
+## Requirements
 
 * PHP 5.3+
 * Redis 2.2+
@@ -46,16 +101,13 @@ pre and post jobs
 
 Jobs are queued as follows:
 
-    require_once 'lib/Resque.php';
+    use Resque\Resque;
+    use Predis\Client;
+    
+    $resque = new Resque(new Client());
+    $resque->enqueue('default_queue', 'My_Job', array('foo' => 'bar'));
 
-	// Required if redis is located elsewhere
-	Resque::setBackend('localhost:6379');
-
-	$args = array(
-		'name' => 'Chris'
-	);
-	Resque::enqueue('default', 'My_Job', $args);
-
+<!--
 ### Defining Jobs ###
 
 Each job should be in it's own class, and include a `perform` method.
@@ -229,99 +281,11 @@ A PECL module (<http://pecl.php.net/package/proctitle>) exists that
 adds this funcitonality to PHP, so if you'd like process titles updated,
 install the PECL module as well. php-resque will detect and use it.
 
-## Event/Hook System ##
-
-php-resque has a basic event system that can be used by your application
-to customize how some of the php-resque internals behave.
-
-You listen in on events (as listed below) by registering with `Resque_Event`
-and supplying a callback that you would like triggered when the event is
-raised:
-
-	Resque_Event::listen('eventName', [callback]);
-
-`[callback]` may be anything in PHP that is callable by `call_user_func_array`:
-
-* A string with the name of a function
-* An array containing an object and method to call
-* An array containing an object and a static method to call
-* A closure (PHP 5.3)
-
-Events may pass arguments (documented below), so your callback should accept
-these arguments.
-
-You can stop listening to an event by calling `Resque_Event::stopListening`
-with the same arguments supplied to `Resque_Event::listen`.
-
-It is up to your application to register event listeners. When enqueuing events
-in your application, it should be as easy as making sure php-resque is loaded
-and calling `Resque_Event::listen`.
-
-When running workers, if you run workers via the default `resque.php` script,
-your `APP_INCLUDE` script should initialize and register any listeners required
-for operation. If you have rolled your own worker manager, then it is again your
-responsibility to register listeners.
-
-A sample plugin is included in the `extras` directory.
-
-### Events ###
-
-#### beforeFirstFork ####
-
-Called once, as a worker initializes. Argument passed is the instance of `Resque_Worker`
-that was just initialized.
-
-#### beforeFork ####
-
-Called before php-resque forks to run a job. Argument passed contains the instance of
-`Resque_Job` for the job about to be run.
-
-`beforeFork` is triggered in the **parent** process. Any changes made will be permanent
-for as long as the worker lives.
-
-#### afterFork ####
-
-Called after php-resque forks to run a job (but before the job is run). Argument
-passed contains the instance of `Resque_Job` for the job about to be run.
-
-`afterFork` is triggered in the child process after forking out to complete a job. Any
-changes made will only live as long as the job is being processed.
-
-#### beforePerform ####
-
-Called before the `setUp` and `perform` methods on a job are run. Argument passed
-contains the instance of `Resque_Job` about for the job about to be run.
-
-You can prevent execution of the job by throwing an exception of `Resque_Job_DontPerform`.
-Any other exceptions thrown will be treated as if they were thrown in a job, causing the
-job to fail.
-
-#### afterPerform ####
-
-Called after the `perform` and `tearDown` methods on a job are run. Argument passed
-contains the instance of `Resque_Job` that was just run.
-
-Any exceptions thrown will be treated as if they were thrown in a job, causing the job
-to be marked as having failed.
-
-#### onFailure ####
-
-Called whenever a job fails. Arguments passed (in this order) include:
-
-* Exception - The exception that was thrown when the job failed
-* Resque_Job - The job that failed
-
-#### afterEnqueue ####
-
-Called after a job has been queued using the `Resque::enqueue` method. Arguments passed
-(in this order) include:
-
-* Class - string containing the name of scheduled job
-* Arguments - array of arguments supplied to the job
-* Queue - string containing the name of the queue the job was added to
+-->
 
 ## Contributors ##
 
+### php-resque
 * chrisboulton
 * thedotedge
 * hobodave
