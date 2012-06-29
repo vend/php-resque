@@ -54,12 +54,12 @@ class Job
      */
     public function updateStatus($status)
     {
-        if(empty($this->payload['id'])) {
+        if (empty($this->payload['id'])) {
+            $this->worker->log('Unable to get job status: no ID in payload', 'warning');
             return;
         }
 
-        $statusInstance = new Status($this->payload['id'], $this->worker->getResque());
-        $statusInstance->update($status);
+        $this->getStatusInstance()->update($status);
     }
 
     /**
@@ -69,8 +69,20 @@ class Job
      */
     public function getStatus()
     {
-        $status = new Status($this->payload['id']);
-        return $status->get();
+        return $this->getStatusInstance()->get();
+    }
+
+    /**
+     * Gets a status instance for this job
+     *
+     * @return \Resque\Job\Status
+     */
+    protected function getStatusInstance()
+    {
+        if (!isset($this->payload['id'])) {
+            throw new InvalidArgumentException('Cannot get status instance: payload has no ID');
+        }
+        return new Status($this->payload['id'], $this->worker->getResque());
     }
 
     /**
@@ -180,13 +192,12 @@ class Job
      */
     public function recreate()
     {
-        $status = new Status($this->payload['id']);
-        $monitor = false;
-        if($status->isTracking()) {
-            $monitor = true;
-        }
-
-        return self::create($this->queue, $this->payload['class'], $this->payload['args'], $monitor);
+        return $this->worker->getResque()->enqueue(
+            $this->queue,
+            $this->payload['class'],
+            $this->payload['args'],
+            $this->getStatusInstance()->isTracking()
+        );
     }
 
     /**
