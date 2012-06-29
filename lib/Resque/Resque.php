@@ -136,7 +136,8 @@ abstract class Resque
         ));
 
         if ($trackStatus) {
-            Status::create($id);
+            $status = new Status($id, $this);
+            $status->create();
         }
 
         return $id;
