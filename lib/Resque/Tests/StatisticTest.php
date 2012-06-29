@@ -1,5 +1,6 @@
 <?php
-require_once dirname(__FILE__) . '/bootstrap.php';
+
+namespace Resque\Tests;
 
 /**
  * Statistic tests.
@@ -9,7 +10,7 @@ require_once dirname(__FILE__) . '/bootstrap.php';
  * @copyright	(c) 2010 Chris Boulton
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class Resque_Tests_StatTest extends Resque_Tests_TestCase
+class StatisticTest extends TestCase
 {
 	public function testStatCanBeIncremented()
 	{

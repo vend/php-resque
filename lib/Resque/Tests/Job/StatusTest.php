@@ -1,6 +1,10 @@
 <?php
-require_once dirname(__FILE__) . '/bootstrap.php';
 
+namespace Resque\Tests\Job;
+
+use Resque\Tests\TestCase;
+
+use Resque\Tests\Mock\Resque;
 use Resque\Job\Status;
 
 /**
@@ -11,14 +15,18 @@ use Resque\Job\Status;
  * @copyright	(c) 2010 Chris Boulton
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class Resque_Tests_JobStatusTest extends Resque_Tests_TestCase
+class StatusTest extends TestCase
 {
 	public function setUp()
 	{
 		parent::setUp();
 
-		// Register a worker to test with
-		$this->worker = new Resque_Worker('jobs');
+		$this->resque = new Resque();
+	}
+
+	public function testConstructor()
+	{
+        $status = new Status(md5(time()), $this->resque);
 	}
 
 	public function testJobStatusCanBeTracked()

@@ -1,5 +1,6 @@
 <?php
-require_once dirname(__FILE__) . '/bootstrap.php';
+
+namespace Resque\Tests;
 
 /**
  * Resque_Job tests.
@@ -9,7 +10,7 @@ require_once dirname(__FILE__) . '/bootstrap.php';
  * @copyright	(c) 2010 Chris Boulton
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class Resque_Tests_JobTest extends Resque_Tests_TestCase
+class JobTest extends TestCase
 {
 	protected $worker;
 
