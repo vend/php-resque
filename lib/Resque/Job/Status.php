@@ -3,6 +3,7 @@
 namespace Resque\Job;
 
 use Resque\Resque;
+use \InvalidArgumentException;
 
 /**
  * Status tracker/information for a job.
@@ -13,10 +14,45 @@ use Resque\Resque;
  */
 class Status
 {
+    /**
+     * How many seconds until a complete status entry should expire
+     *
+     * @var int
+     */
+    const COMPLETE_TTL = 86400;
+
+    /**#@+
+     * Status codes
+     *
+     * @var int
+     */
 	const STATUS_WAITING = 1;
 	const STATUS_RUNNING = 2;
 	const STATUS_FAILED = 3;
 	const STATUS_COMPLETE = 4;
+	/**#@-*/
+
+    /**
+     * An array of valid statuses
+     *
+     * @var array<int>
+     */
+    protected static $valid = array(
+        self::STATUS_WAITING,
+        self::STATUS_RUNNING,
+        self::STATUS_FAILED,
+        self::STATUS_COMPLETE
+    );
+
+    /**
+     * An array of complete statuses
+     *
+     * @var array<int>
+     */
+    protected static $complete = array(
+        self::STATUS_FAILED,
+        self::STATUS_COMPLETE
+    );
 
 	/**
 	 * @var string The ID of the job this status class refers back to.
@@ -29,18 +65,11 @@ class Status
 	protected $resque;
 
 	/**
-	 * @var mixed Cache variable if the status of this job is being monitored or not.
-	 * 	True/false when checked at least once or null if not checked yet.
+	 * @var boolean|null  Cache variable if the status of this job is being
+     *                     monitored or not. True/false when checked at least
+     *                     once or null if not checked yet.
 	 */
-	private $isTracking = null;
-
-	/**
-	 * @var array Array of statuses that are considered final/complete.
-	 */
-	private static $completeStatuses = array(
-		self::STATUS_FAILED,
-		self::STATUS_COMPLETE
-	);
+	protected $isTracking = null;
 
 	/**
 	 * Setup a new instance of the job monitor class for the supplied job ID.
@@ -59,15 +88,36 @@ class Status
 	 *
 	 * @param string $id The ID of the job to monitor the status of.
 	 */
-	public function create($id)
+	public function create()
 	{
-		$statusPacket = array(
-			'status' => self::STATUS_WAITING,
-			'updated' => time(),
-			'started' => time(),
-		);
-		$this->resque->getClient()->set('job:' . $id . ':status', json_encode($statusPacket));
+        if ($this->resque->getClient()->set((string)$this, $this->getStatusPayload(self::STATUS_WAITING))) {
+            $this->isTracking = true;
+        }
 	}
+
+    /**
+     * Gets a status payload
+     *
+     * @param int $status
+     * @return array
+     */
+    protected function getStatusPayload($status)
+    {
+        if (!in_array($status, self::$valid)) {
+            throw new InvalidArgumentException('Invalid status');
+        }
+
+        $payload = array(
+            'status'  => $status,
+            'updated' => time()
+        );
+
+        if ($status == self::STATUS_WAITING) {
+            $payload['started'] = time();
+        }
+
+        return json_encode($payload);
+    }
 
 	/**
 	 * Check if we're actually checking the status of the loaded job status
@@ -77,19 +127,11 @@ class Status
 	 */
 	public function isTracking()
 	{
-		if($this->isTracking === false) {
-			return false;
-		}
+        if ($this->isTracking === null) {
+            $this->isTracking = (boolean)$this->resque->getClient()->exists((string)$this);
+        }
 
-		if (!$this->resque->getClient())
-
-		if(!$this->resque->getClient()->exists((string)$this)) {
-			$this->isTracking = false;
-			return false;
-		}
-
-		$this->isTracking = true;
-		return true;
+        return $this->isTracking;
 	}
 
 	/**
@@ -103,15 +145,11 @@ class Status
 			return;
 		}
 
-		$statusPacket = array(
-			'status' => $status,
-			'updated' => time(),
-		);
-		$this->resque->getClient()->set((string)$this, json_encode($statusPacket));
+		$this->resque->getClient()->set((string)$this, $this->getStatusPayload($status));
 
 		// Expire the status for completed jobs after 24 hours
-		if (in_array($status, self::$completeStatuses)) {
-			$this->resque->getClient()->expire((string)$this, 86400);
+		if (in_array($status, self::$complete)) {
+			$this->resque->getClient()->expire((string)$this, self::COMPLETE_TTL);
 		}
 	}
 
@@ -127,8 +165,15 @@ class Status
 			return false;
 		}
 
-		$statusPacket = json_decode($this->resque->getClient()->get((string)$this), true);
-		if(!$statusPacket) {
+        $status = $this->resque->getClient()->get((string)$this);
+
+        if (!$status) {
+            return false;
+        }
+
+        $statusPacket = json_decode($status, true);
+
+		if (!$statusPacket) {
 			return false;
 		}
 
@@ -137,6 +182,8 @@ class Status
 
 	/**
 	 * Stop tracking the status of a job.
+	 *
+	 * @return void
 	 */
 	public function stop()
 	{
@@ -153,4 +200,3 @@ class Status
 		return 'job:' . $this->id . ':status';
 	}
 }
-?>
