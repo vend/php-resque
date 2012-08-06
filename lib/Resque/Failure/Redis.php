@@ -28,11 +28,25 @@ class Redis implements FailureBackend
         $data = new stdClass;
         $data->failed_at = strftime('%a %b %d %H:%M:%S %Z %Y');
         $data->payload = $payload;
-        $data->exception = get_class($exception);
-        $data->error = $exception->getMessage();
-        $data->backtrace = explode("\n", $exception->getTraceAsString());
+
+        // Let the exception lie about its class: to support marshalling exceptions
+        if (method_exists($exception, 'getClass')) {
+            $data->exception = $exception->getClass();
+        } else {
+            $data->exception = get_class($exception);
+        }
+
+        // Allow marshalling of the trace: PHP marks getTraceAsString as final :-(
+        if (method_exists($exception, 'getPreviousTraceAsString')) {
+            $data->backtrace = explode("\n", $exception->getPreviousTraceAsString());
+        } else {
+            $data->backtrace = explode("\n", $exception->getTraceAsString());
+        }
+
+        $data->error = $exception->getMessage() . ' at ' . $exception->getFile() . ':' . $exception->getLine();
         $data->worker = (string)$worker;
         $data->queue = $queue;
+
         $data = json_encode($data);
         $worker->getResque()->getClient()->rpush($worker->getResque()->getKey('failed'), $data);
     }
