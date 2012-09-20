@@ -8,9 +8,13 @@ use \InvalidArgumentException;
 /**
  * Status tracker/information for a job.
  *
- * @author		Chris Boulton <chris.boulton@interspire.com>
- * @copyright	(c) 2010 Chris Boulton
- * @license		http://www.opensource.org/licenses/mit-license.php
+ * Modified from the original Resque\Status tracker to use a hash; preventing
+ * race conditions in updating a single property of the status.
+ *
+ * @author    Dominic Scheirlinck <dominic@varspool.com>
+ * @author    Chris Boulton <chris.boulton@interspire.com>
+ * @copyright (c) 2010 Chris Boulton
+ * @license   http://www.opensource.org/licenses/mit-license.php
  */
 class Status
 {
@@ -38,10 +42,10 @@ class Status
      * @var array<int>
      */
     protected static $valid = array(
-        self::STATUS_WAITING,
-        self::STATUS_RUNNING,
-        self::STATUS_FAILED,
-        self::STATUS_COMPLETE
+        self::STATUS_WAITING  => 'waiting',
+        self::STATUS_RUNNING  => 'running',
+        self::STATUS_FAILED   => 'failed',
+        self::STATUS_COMPLETE => 'complete'
     );
 
     /**
@@ -59,64 +63,106 @@ class Status
 	 */
 	protected $id;
 
-	/**
-	 * @var Resque
-	 */
-	protected $resque;
+    /**
+     * @var Predis\Client
+     */
+    protected $client;
 
 	/**
 	 * @var boolean|null  Cache variable if the status of this job is being
      *                     monitored or not. True/false when checked at least
      *                     once or null if not checked yet.
-	 */
-	protected $isTracking = null;
-
-	/**
-	 * Setup a new instance of the job monitor class for the supplied job ID.
-	 *
-	 * @param string $id The ID of the job to manage the status for.
-	 */
-	public function __construct($id, Resque $resque)
-	{
-		$this->id = $id;
-		$this->resque = $resque;
-	}
-
-	/**
-	 * Create a new status monitor item for the supplied job ID. Will create
-	 * all necessary keys in Redis to monitor the status of a job.
-	 *
-	 * @param string $id The ID of the job to monitor the status of.
-	 */
-	public function create()
-	{
-        if ($this->resque->getClient()->set((string)$this, $this->getStatusPayload(self::STATUS_WAITING))) {
-            $this->isTracking = true;
-        }
-	}
+     */
+    protected $isTracking = null;
 
     /**
-     * Gets a status payload
+     * Setup a new instance of the job monitor class for the supplied job ID.
      *
-     * @param int $status
-     * @return array
+     * @param string $id The ID of the job to manage the status for.
      */
-    protected function getStatusPayload($status)
+    public function __construct($id, Resque $resque)
     {
-        if (!in_array($status, self::$valid)) {
+        $this->id = $id;
+        $this->client = $resque->getClient();
+    }
+
+    /**
+     * Create a new status monitor item for the supplied job ID. Will create
+     * all necessary keys in Redis to monitor the status of a job.
+     *
+     * @param string $id The ID of the job to monitor the status of.
+     */
+    public function create()
+    {
+        $this->isTracking = true;
+        $this->setAttributes(array(
+            'status'  => self::STATUS_WAITING,
+            'started' => time(),
+            'updated' => time()
+        ));
+    }
+
+    /**
+     * Sets all the given attributes
+     *
+     * @param array<string => mixed> $attributes
+     */
+    public function setAttributes(array $attributes)
+    {
+        $args = array($this->getHashKey());
+
+        foreach ($attributes as $name => $value) {
+            if ($name == 'status') {
+                $this->update($value);
+                continue;
+            }
+            $args[] = $name;
+            $args[] = $value;
+        }
+
+        call_user_func_array(array($this->client, 'hmset'), $args);
+    }
+
+    /**
+     * Sets an attribute
+     *
+     * @param string $name
+     * @param mixed $value
+     */
+    public function setAttribute($name, $value)
+    {
+        if ($name == 'status') {
+            $this->update($value);
+        } else {
+            $this->client->hmset($this->getHashKey(), $name, $value, 'updated', time());
+        }
+    }
+
+    /**
+     * Update the status indicator for the current job with a new status.
+     *
+     * This method is called from setAttribute/s so that the expiry can be
+     * properly updated.
+     *
+     * @param int The status of the job (see constants in Resque\Job\Status)
+     * @return void
+     */
+    public function update($status)
+    {
+        if (!isset(self::$valid[$status])) {
             throw new InvalidArgumentException('Invalid status');
         }
 
-        $payload = array(
-            'status'  => $status,
-            'updated' => time()
-        );
-
-        if ($status == self::STATUS_WAITING) {
-            $payload['started'] = time();
+        if (!$this->isTracking()) {
+            return;
         }
 
-        return json_encode($payload);
+        $this->client->hmset($this->getHashKey(), 'status', $status, 'updated', time());
+
+        // Expire the status for completed jobs after 24 hours
+        if (in_array($status, self::$complete)) {
+            $this->client->expire($this->getHashKey(), self::COMPLETE_TTL);
+        }
     }
 
 	/**
@@ -128,75 +174,71 @@ class Status
 	public function isTracking()
 	{
         if ($this->isTracking === null) {
-            $this->isTracking = (boolean)$this->resque->getClient()->exists((string)$this);
+            $this->isTracking = (boolean)$this->client->exists($this->getHashKey());
         }
 
         return $this->isTracking;
-	}
+    }
 
-	/**
-	 * Update the status indicator for the current job with a new status.
-	 *
-	 * @param int The status of the job (see constants in Resque\Job\Status)
-	 */
-	public function update($status)
-	{
-		if (!$this->isTracking()) {
-			return;
-		}
+    /**
+     * Gets the time this status was updated
+     */
+    public function getUpdated()
+    {
+        return $this->getAttribute('updated');
+    }
 
-		$this->resque->getClient()->set((string)$this, $this->getStatusPayload($status));
+    /**
+     * Gets the time this status was created
+     */
+    public function getCreated()
+    {
+        return $this->getAttribute('created');
+    }
 
-		// Expire the status for completed jobs after 24 hours
-		if (in_array($status, self::$complete)) {
-			$this->resque->getClient()->expire((string)$this, self::COMPLETE_TTL);
-		}
-	}
+    /**
+     * Fetch the status for the job being monitored.
+     *
+     * For consistency, this would be called getStatus(), but for BC, it's
+     * just get().
+     *
+     * @return null|integer
+     */
+    public function get()
+    {
+        return $this->getAttribute('status');
+    }
 
-	/**
-	 * Fetch the status for the job being monitored.
-	 *
-	 * @return mixed False if the status is not being monitored, otherwise the status as
-	 * 	as an integer, based on the Resque\Job\Status constants.
-	 */
-	public function get()
-	{
-		if (!$this->isTracking()) {
-			return false;
-		}
+    /**
+     * Gets a single attribute value
+     *
+     * @param string $name
+     * @param mixed $default
+     * @return mixed
+     */
+    public function getAttribute($name, $default = null)
+    {
+        $value = $this->client->hget($this->getHashKey(), $name);
+        return $value !== null ? $value : $default;
+    }
 
-        $status = $this->resque->getClient()->get((string)$this);
+    /**
+     * Stop tracking the status of a job.
+     *
+     * @return void
+     */
+    public function stop()
+    {
+        $this->client->del($this->getHashKey());
+    }
 
-        if (!$status) {
-            return false;
-        }
-
-        $statusPacket = json_decode($status, true);
-
-		if (!$statusPacket) {
-			return false;
-		}
-
-		return $statusPacket['status'];
-	}
-
-	/**
-	 * Stop tracking the status of a job.
-	 *
-	 * @return void
-	 */
-	public function stop()
-	{
-		$this->resque->getClient()->del((string)$this);
-	}
-
-	/**
-	 * Generate a string representation of this object.
-	 *
-	 * @return string String representation of the current job status class.
-	 */
-	public function __toString()
-	{
-		return 'job:' . $this->id . ':status';
-	}
+    /**
+     * A new key, because we're now using a hash format to store the status
+     *
+     * @return string
+     */
+    protected function getHashKey()
+    {
+        return 'job:' . $this->id . ':status/hash';
+    }
 }
