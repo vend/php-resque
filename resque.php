@@ -66,7 +66,7 @@ else {
 	$queues = explode(',', $QUEUE);
 	$worker = new Resque_Worker($queues);
 	$worker->logLevel = $logLevel;
-	
+
 	$PIDFILE = getenv('PIDFILE');
 	if ($PIDFILE) {
 		file_put_contents($PIDFILE, getmypid()) or

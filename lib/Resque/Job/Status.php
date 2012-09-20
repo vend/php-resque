@@ -6,7 +6,7 @@ use Resque\Resque;
 use \InvalidArgumentException;
 
 /**
- * Status tracker/information for a job.
+ * Status tracker/information for a job
  *
  * Modified from the original Resque\Status tracker to use a hash; preventing
  * race conditions in updating a single property of the status.
@@ -18,23 +18,26 @@ use \InvalidArgumentException;
  */
 class Status
 {
-    /**
-     * How many seconds until a complete status entry should expire
+    /**#@+
+     * How many seconds until a status entry should expire
+     *
+     * This is only applied once a
      *
      * @var int
      */
-    const COMPLETE_TTL = 86400;
+    const COMPLETE_TTL   = 86400;    // 24 hours
+    /**#@-*/
 
     /**#@+
      * Status codes
      *
      * @var int
      */
-	const STATUS_WAITING = 1;
-	const STATUS_RUNNING = 2;
-	const STATUS_FAILED = 3;
-	const STATUS_COMPLETE = 4;
-	/**#@-*/
+    const STATUS_WAITING  = 1;
+    const STATUS_RUNNING  = 2;
+    const STATUS_FAILED   = 3;
+    const STATUS_COMPLETE = 4;
+    /**#@-*/
 
     /**
      * An array of valid statuses
@@ -58,18 +61,18 @@ class Status
         self::STATUS_COMPLETE
     );
 
-	/**
-	 * @var string The ID of the job this status class refers back to.
-	 */
-	protected $id;
+    /**
+     * @var string The ID of the job this status class refers back to.
+     */
+    protected $id;
 
     /**
      * @var Predis\Client
      */
     protected $client;
 
-	/**
-	 * @var boolean|null  Cache variable if the status of this job is being
+    /**
+     * @var boolean|null  Cache variable if the status of this job is being
      *                     monitored or not. True/false when checked at least
      *                     once or null if not checked yet.
      */
@@ -165,18 +168,17 @@ class Status
         }
     }
 
-	/**
-	 * Check if we're actually checking the status of the loaded job status
-	 * instance.
-	 *
-	 * @return boolean True if the status is being monitored, false if not.
-	 */
-	public function isTracking()
-	{
+    /**
+     * Check if we're actually checking the status of the loaded job status
+     * instance.
+     *
+     * @return boolean True if the status is being monitored, false if not.
+     */
+    public function isTracking()
+    {
         if ($this->isTracking === null) {
             $this->isTracking = (boolean)$this->client->exists($this->getHashKey());
         }
-
         return $this->isTracking;
     }
 
