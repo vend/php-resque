@@ -21,11 +21,15 @@ class Status
     /**#@+
      * How many seconds until a status entry should expire
      *
-     * This is only applied once a
+     * In the previous implementation, incomplete statuses were not given a
+     * TTL at all. This can make Redis treat the keys differently, depending
+     * on your maxmemory-policy (for example, volative-lru will only remove
+     * keys with an expire set).
      *
      * @var int
      */
     const COMPLETE_TTL   = 86400;    // 24 hours
+    const INCOMPLETE_TTL = 604800;   // A week
     /**#@-*/
 
     /**#@+
@@ -33,10 +37,11 @@ class Status
      *
      * @var int
      */
-    const STATUS_WAITING  = 1;
-    const STATUS_RUNNING  = 2;
-    const STATUS_FAILED   = 3;
-    const STATUS_COMPLETE = 4;
+    const STATUS_WAITING   = 1;
+    const STATUS_RUNNING   = 2;
+    const STATUS_FAILED    = 3;
+    const STATUS_COMPLETE  = 4;
+    const STATUS_RECREATED = 5;
     /**#@-*/
 
     /**
@@ -45,10 +50,11 @@ class Status
      * @var array<int>
      */
     protected static $valid = array(
-        self::STATUS_WAITING  => 'waiting',
-        self::STATUS_RUNNING  => 'running',
-        self::STATUS_FAILED   => 'failed',
-        self::STATUS_COMPLETE => 'complete'
+        self::STATUS_WAITING   => 'waiting',
+        self::STATUS_RUNNING   => 'running',
+        self::STATUS_FAILED    => 'failed',
+        self::STATUS_COMPLETE  => 'complete',
+        self::STATUS_RECREATED => 'recreated'
     );
 
     /**
@@ -58,13 +64,26 @@ class Status
      */
     protected static $complete = array(
         self::STATUS_FAILED,
-        self::STATUS_COMPLETE
+        self::STATUS_COMPLETE,
+        self::STATUS_RECREATED
     );
 
     /**
      * @var string The ID of the job this status class refers back to.
      */
     protected $id;
+
+    /**
+     * Whether the status has been loaded from the database
+     *
+     * @var boolean
+     */
+    protected $loaded = false;
+
+    /**
+     * @var array<string => mixed>
+     */
+    protected $attributes = array();
 
     /**
      * @var Predis\Client
@@ -98,6 +117,7 @@ class Status
     public function create()
     {
         $this->isTracking = true;
+
         $this->setAttributes(array(
             'status'  => self::STATUS_WAITING,
             'started' => time(),
@@ -112,6 +132,8 @@ class Status
      */
     public function setAttributes(array $attributes)
     {
+        $this->attributes = array_merge($this->attributes, $attributes);
+
         $args = array($this->getHashKey());
 
         foreach ($attributes as $name => $value) {
@@ -137,6 +159,7 @@ class Status
         if ($name == 'status') {
             $this->update($value);
         } else {
+            $this->attribute[$name] = $value;
             $this->client->hmset($this->getHashKey(), $name, $value, 'updated', time());
         }
     }
@@ -160,11 +183,14 @@ class Status
             return;
         }
 
+        $this->attribute['status'] = $status;
         $this->client->hmset($this->getHashKey(), 'status', $status, 'updated', time());
 
         // Expire the status for completed jobs after 24 hours
         if (in_array($status, self::$complete)) {
             $this->client->expire($this->getHashKey(), self::COMPLETE_TTL);
+        } else {
+            $this->client->expire($this->getHashKey(), self::INCOMPLETE_TTL);
         }
     }
 
@@ -178,6 +204,10 @@ class Status
     {
         if ($this->isTracking === null) {
             $this->isTracking = (boolean)$this->client->exists($this->getHashKey());
+            if ($this->isTracking) {
+                $this->attributes = array_merge($this->attributes, $this->client->hgetall($this->getHashKey()));
+                $this->loaded     = true;
+            }
         }
         return $this->isTracking;
     }
@@ -220,6 +250,10 @@ class Status
      */
     public function getAttribute($name, $default = null)
     {
+        if ($this->loaded) {
+            return isset($this->attributes[$name]) ? $this->attributes[$name] : $default;
+        }
+
         $value = $this->client->hget($this->getHashKey(), $name);
         return $value !== null ? $value : $default;
     }
@@ -237,9 +271,11 @@ class Status
     /**
      * A new key, because we're now using a hash format to store the status
      *
+     * Used from outside this class to do status processing more efficiently
+     *
      * @return string
      */
-    protected function getHashKey()
+    public function getHashKey()
     {
         return 'job:' . $this->id . ':status/hash';
     }

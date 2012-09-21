@@ -318,7 +318,6 @@ abstract class Worker extends Configurable
             return;
         }
 
-        $job->updateStatus(Status::STATUS_COMPLETE);
         $this->log('done ' . $job);
     }
 
@@ -624,7 +623,7 @@ abstract class Worker extends Configurable
     public function registerWorker()
     {
         $this->resque->getClient()->sadd($this->resque->getKey(self::WORKERS_KEY), $this);
-        $this->resque->getClient()->set($this->resque->getKey($this->getJobKey() . ':started'), strftime('%a %b %d %H:%M:%S %Z %Y'));
+        $this->resque->getClient()->set($this->getJobKey() . ':started', strftime('%a %b %d %H:%M:%S %Z %Y'));
     }
 
     /**

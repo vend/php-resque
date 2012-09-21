@@ -58,7 +58,6 @@ class Job
             $this->worker->log('Unable to get job status: no ID in payload', 'warning');
             return;
         }
-
         $this->getStatusInstance()->update($status);
     }
 
@@ -192,12 +191,22 @@ class Job
      */
     public function recreate()
     {
-        return $this->worker->getResque()->enqueue(
+        $status = $this->getStatusInstance();
+        $tracking = $status->isTracking();
+
+        $new = $this->worker->getResque()->enqueue(
             $this->queue,
             $this->payload['class'],
             $this->payload['args'],
-            $this->getStatusInstance()->isTracking()
+            $tracking
         );
+
+        if ($tracking) {
+            $this->updateStatus(Status::STATUS_RECREATED);
+            $status->setAttribute('recreated_as', $new);
+        }
+
+        return $new;
     }
 
     /**
