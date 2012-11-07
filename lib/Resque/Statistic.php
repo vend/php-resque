@@ -31,7 +31,7 @@ class Statistic
      *
      * @return string
      */
-    protected function getKey()
+    public function getKey()
     {
         return $this->resque->getKey(self::KEY . $this->statistic);
     }
