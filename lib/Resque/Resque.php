@@ -26,8 +26,9 @@ abstract class Resque
      *
      * @var string
      */
-    const QUEUE_KEY = 'queue:';
-    const QUEUES_KEY = 'queues';
+    const QUEUE_KEY   = 'queue:';
+    const QUEUES_KEY  = 'queues';
+    const WORKERS_KEY = 'workers';
     /**#@-*/
 
     /**
@@ -157,6 +158,22 @@ abstract class Resque
         }
 
         return $queues;
+    }
+
+    /**
+     * Gets an array of all known worker IDs
+     *
+     * @return array<string>
+     */
+    public function getWorkerIds()
+    {
+        $workers = $this->getClient()->smembers($this->getKey(self::WORKERS_KEY));
+
+        if (!is_array($workers)) {
+            $workers = array();
+        }
+
+        return $workers;
     }
 
     /**
