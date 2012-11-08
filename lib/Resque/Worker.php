@@ -2,16 +2,14 @@
 
 namespace Resque;
 
-use Resque\Exception\Exception;
-
-use Resque\Util\Log;
-
 use Resque\Statistic;
 use Resque\Event;
+use Resque\Exception\Exception;
 use Resque\Job;
 use Resque\Job\DirtyExitException;
 use Resque\Job\Status;
 use Resque\Util\Configurable;
+use Resque\Util\Log;
 
 /**
  * Resque worker that handles checking queues for jobs, fetching them
@@ -21,8 +19,6 @@ use Resque\Util\Configurable;
  */
 abstract class Worker extends Configurable
 {
-    const WORKERS_KEY = 'workers';
-
     /**
      * @var string String identifying this worker.
      */
@@ -101,14 +97,6 @@ abstract class Worker extends Configurable
      *       - id_format        => string, suitable for sprintf
      *       - id_location_preg => string, Perl compat regex, gets hostname and PID
      *                               out of worker ID
-     *     Process matching
-     *       - ps        => string, path to ps command
-     *       - grep      => string, path to grep command (NB: /usr/bin on MacOS)
-     *       - ps_args   => array<string>, arguments to ps to return a list of PIDs
-     *                        and commands
-     *       - grep_args => array<string>, arguments to grep to match worker
-     *                        processes
-     *
      *
      * @see Resque\Util.Configurable::configure()
      */
@@ -119,10 +107,6 @@ abstract class Worker extends Configurable
             'pid'              => null,
             'id_format'        => '%s:%d:%s',
             'id_location_preg' => '/^([^:]+?):([0-9]+):/',
-            'ps'               => '/bin/ps',
-            'ps_args'          => array('-A', '-o', 'pid,command'),
-            'grep'             => '/bin/grep',
-            'grep_args'        => array('[r]esque[^-]')
         ), $options);
 
         parent::configure($options);
@@ -155,15 +139,19 @@ abstract class Worker extends Configurable
      * If you change the format of the ID, you should also change the definition
      * of this method.
      *
+     * This method *always* parses the ID of the worker, rather than figuring out
+     * the current processes' PID/hostname. This means you can use setId() to
+     * interrogate the properties of other workers given their ID.
+     *
      * @param string $id
      * @return array(string hostname, int pid)
      * @throws Exception
      */
-    protected function getWorkerLocationFromId($id)
+    protected function getLocation()
     {
         $matches = array();
 
-        if (!preg_match($this->options['id_location_preg'], $id, $matches)) {
+        if (!preg_match($this->options['id_location_preg'], $this->getId(), $matches)) {
             throw new Exception('Incompatible ID format: unable to determine worker location');
         }
 
@@ -298,7 +286,7 @@ abstract class Worker extends Configurable
             $this->doneWorking();
         }
 
-        $this->unregisterWorker();
+        $this->unregister();
     }
 
     /**
@@ -402,7 +390,7 @@ abstract class Worker extends Configurable
         $this->registerSigHandlers();
         $this->pruneDeadWorkers();
         $this->notifyEvent('beforeFirstFork', $this);
-        $this->registerWorker();
+        $this->register();
     }
 
     /**
@@ -423,7 +411,7 @@ abstract class Worker extends Configurable
      * Register signal handlers that a worker should respond to.
      *
      * TERM: Shutdown immediately and stop processing jobs.
-     * INT: Shutdown immediately and stop processing jobs.
+     * INT:  Shutdown immediately and stop processing jobs.
      * QUIT: Shutdown after the current job finishes processing.
      * USR1: Kill the forked child immediately and continue processing jobs.
      */
@@ -526,11 +514,14 @@ abstract class Worker extends Configurable
      */
     protected function pruneDeadWorkers()
     {
-        $pids = $this->getPids();
-        $ids  = $this->getIds();
+        $pids = $this->resque->getWorkerPids();
+        $ids  = $this->resque->getWorkerIds();
 
         foreach ($ids as $id) {
-            list($host, $pid) = $this->getWorkerLocationFromId($id);
+            $worker = clone $this;
+            $worker->setId($id);
+
+            list($host, $pid) = $worker->getLocation();
 
             // Ignore workers on other hosts
             if ($host != $this->options['server_name']) {
@@ -548,108 +539,43 @@ abstract class Worker extends Configurable
             }
 
             $this->log('Pruning dead worker: ' . $id, Log::WARNING);
-            $this->unregister($id);
+            $worker->unregister();
         }
     }
 
     /**
-     * Return an array of process IDs for all of the Resque workers currently
-     * running on this machine.
-     *
-     * It'd be nice and much easier to use pgrep. It's not available on MacOS.
-     *
-     * @return array Array of Resque worker process IDs.
+     * Gets the ID of this worker
      */
-    protected function getPids()
+    public function getId()
     {
-        $ps = $this->options['ps'];
-        $ps_args = array_map(function ($v) {
-            return escapeshellarg($v);
-        }, $this->options['ps_args']);
-
-        $grep = $this->options['grep'];
-        $grep_args = array_map(function ($v) {
-            return escapeshellarg($v);
-        }, $this->options['grep_args']);
-
-        $command = sprintf(
-            '%s %s | %s %s',
-            escapeshellcmd($ps),
-            implode($ps_args, ' '),
-            escapeshellcmd($grep),
-            implode($grep_args, ' ')
-        );
-
-        $output = exec($command);
-
-        $pids = array();
-        $output = null;
-        $return = null;
-
-        exec($command, $output, $return);
-
-        if ($return !== 0) {
-            $this->log('Unable to determine worker PIDs');
-            return false;
-        }
-
-        foreach ($output as $line) {
-            $line = explode(' ', trim($line), 2);
-
-            if (!$line[0] || !is_numeric($line[0])) {
-                continue;
-            }
-
-            $pids[] = (int)$line[0];
-        }
-
-        return $pids;
-    }
-
-    protected function getIds()
-    {
-        $workers = $this->resque->getClient()->smembers($this->resque->getKey(self::WORKERS_KEY));
-
-        if (!is_array($workers)) {
-            $workers = array();
-        }
-
-        return $workers;
+        return $this->id;
     }
 
     /**
      * Register this worker in Redis.
      */
-    public function registerWorker()
+    public function register()
     {
-        $this->resque->getClient()->sadd($this->resque->getKey(self::WORKERS_KEY), $this);
+        $this->resque->getClient()->sadd($this->resque->getKey(Resque::WORKERS_KEY), $this->getId());
         $this->resque->getClient()->set($this->getJobKey() . ':started', strftime('%a %b %d %H:%M:%S %Z %Y'));
     }
 
     /**
      * Unregister this worker in Redis. (shutdown etc)
      */
-    public function unregisterWorker()
+    public function unregister()
     {
-        if(is_object($this->currentJob)) {
+        if (is_object($this->currentJob)) {
             $this->currentJob->fail(new DirtyExitException());
         }
 
-        $this->unregister($this->id);
-    }
-
-    /**
-     * Unregisters the job with the given ID
-     *
-     * @param string $id
-     */
-    protected function unregister($id)
-    {
-        $this->resque->getClient()->srem($this->resque->getKey(self::WORKERS_KEY), $id);
+        $this->resque->getClient()->srem($this->resque->getKey(Resque::WORKERS_KEY), $this->getId());
         $this->resque->getClient()->del($this->getJobKey());
         $this->resque->getClient()->del($this->getJobKey() . ':started');
-        $this->getStatistic('processed:' . $id)->clear();
-        $this->getStatistic('failed:' . $id)->clear();
+
+        $this->getStatistic('processed')->clear();
+        $this->getStatistic('failed')->clear();
+        $this->getStatistic('shutdown')->clear();
     }
 
     /**
@@ -659,15 +585,18 @@ abstract class Worker extends Configurable
      */
     public function workingOn(Job $job)
     {
-        $job->worker = $this;
         $this->currentJob = $job;
+
+        $job->worker = $this;
         $job->updateStatus(Status::STATUS_RUNNING);
+
         $data = json_encode(array(
             'queue' => $job->queue,
             'run_at' => strftime('%a %b %d %H:%M:%S %Z %Y'),
             'payload' => $job->payload
         ));
-        $this->resque->getClient()->set($this->getJobKey($job->worker), $data);
+
+        $this->resque->getClient()->set($this->getJobKey(), $data);
     }
 
     /**
@@ -686,18 +615,22 @@ abstract class Worker extends Configurable
      * Generate a string representation of this worker.
      *
      * @return string String identifier for this worker instance.
+     * @deprecated Just use getId(). Explicit, simpler, less magic.
      */
     public function __toString()
     {
         return $this->id;
     }
 
-    protected function getJobKey($worker = null)
+    /**
+     * Gets the key for where this worker will store its active job
+     *
+     * @param string $worker
+     * @return string
+     */
+    protected function getJobKey()
     {
-        if ($worker == null) {
-            $worker = $this;
-        }
-        return $this->getResque()->getKey('worker:' . (string)$worker);
+        return $this->getResque()->getKey('worker:' . $this->getId());
     }
 
     /**
@@ -724,6 +657,6 @@ abstract class Worker extends Configurable
      */
     public function getStatistic($name)
     {
-        return new Statistic($this->resque, $name. ':' . (string)$this);
+        return new Statistic($this->resque, $name. ':' . $this->getId());
     }
 }

@@ -23,7 +23,7 @@ class Resque_Tests_EventTest extends Resque_Tests_TestCase
 
 		// Register a worker to test with
 		$this->worker = new Resque_Worker('jobs');
-		$this->worker->registerWorker();
+		$this->worker->register();
 	}
 
 	public function tearDown()

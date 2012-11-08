@@ -19,7 +19,7 @@ abstract class Resque
     /**
      * @var string
      */
-    const VERSION = '1.1-generic';
+    const VERSION = '1.2';
 
     /**#@+
      * Protocol keys
@@ -30,6 +30,37 @@ abstract class Resque
     const QUEUES_KEY  = 'queues';
     const WORKERS_KEY = 'workers';
     /**#@-*/
+
+    /**
+     * @var array<string => mixed>
+     */
+    protected $options;
+
+    /**
+     * Constructor
+     *
+     * Override this in your subclass to
+     */
+    public function __construct(array $options = array())
+    {
+        $this->configure($options);
+    }
+
+    /**
+     * Configures the options of the resque background queue system
+     *
+     * @param array $options
+     * @return array<string => mixed>
+     */
+    public function configure(array $options)
+    {
+        $this->options = array_merge(array(
+            'ps'        => '/bin/ps',
+            'ps_args'   => array('-A', '-o', 'pid,command'),
+            'grep'      => '/bin/grep',
+            'grep_args' => array('[r]esque[^-]')
+        ), $options);
+    }
 
     /**
      * Gets a Redis client
@@ -175,6 +206,61 @@ abstract class Resque
 
         return $workers;
     }
+
+    /**
+     * Return an array of process IDs for all of the Resque workers currently
+     * running on this machine.
+     *
+     * It'd be nice and much easier to use pgrep. It's not available on MacOS.
+     *
+     * @return array Array of Resque worker process IDs.
+     */
+    public function getWorkerPids()
+    {
+        $ps = $this->options['ps'];
+        $ps_args = array_map(function ($v) {
+            return escapeshellarg($v);
+        }, $this->options['ps_args']);
+
+        $grep = $this->options['grep'];
+        $grep_args = array_map(function ($v) {
+            return escapeshellarg($v);
+        }, $this->options['grep_args']);
+
+        $command = sprintf(
+            '%s %s | %s %s',
+            escapeshellcmd($ps),
+            implode($ps_args, ' '),
+            escapeshellcmd($grep),
+            implode($grep_args, ' ')
+        );
+
+        $output = exec($command);
+
+        $pids = array();
+        $output = null;
+        $return = null;
+
+        exec($command, $output, $return);
+
+        if ($return !== 0) {
+            $this->log('Unable to determine worker PIDs');
+            return false;
+        }
+
+        foreach ($output as $line) {
+            $line = explode(' ', trim($line), 2);
+
+            if (!$line[0] || !is_numeric($line[0])) {
+                continue;
+            }
+
+            $pids[] = (int)$line[0];
+        }
+
+        return $pids;
+    }
+
 
     /**
      * Gets a statistic
