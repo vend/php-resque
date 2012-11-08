@@ -322,6 +322,9 @@ abstract class Worker extends Configurable
             return;
         }
 
+        // Each call to reserve, we check the queues in a different order
+        shuffle($queues);
+
         $job = false;
         foreach($queues as $queue) {
             $payload = $this->resque->pop($queue);
