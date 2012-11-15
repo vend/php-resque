@@ -306,7 +306,8 @@ abstract class Worker extends Configurable
             return;
         }
 
-        $this->log('done ' . $job);
+        $this->log(sprintf('Finished job %s/%s (Id: %s)', $job->queue, $job->payload['args']['job'], $job->payload['id']), 'notice');
+        $this->log('Done ' . $job, 'debug');
     }
 
     /**
