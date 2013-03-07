@@ -2,6 +2,10 @@
 
 namespace Resque;
 
+
+use \ArrayAccess;
+use \ArrayIterator;
+use \IteratorAggregate;
 use Resque\Failure;
 use Resque\Job\Status;
 use Resque\Job\DontPerformException;
@@ -13,7 +17,7 @@ use Resque\Job\DontPerformException;
  * @copyright    (c) 2010 Chris Boulton
  * @license        http://www.opensource.org/licenses/mit-license.php
  */
-class Job
+class Job implements ArrayAccess, IteratorAggregate
 {
     /**
      * @var string The name of the queue that this job belongs to.
@@ -21,12 +25,14 @@ class Job
     public $queue;
 
     /**
+     * @todo Mark protected
      * @var Worker Instance of the Resque worker running this job.
      */
     public $worker;
 
     /**
-     * @var object Object containing details of the job.
+     * @todo Mark protected
+     * @var array Containing details of the job.
      */
     public $payload;
 
@@ -45,6 +51,14 @@ class Job
     {
         $this->queue = $queue;
         $this->payload = $payload;
+    }
+
+    /**
+     * @return string
+     */
+    public function getQueue()
+    {
+        return $this->queue;
     }
 
     /**
@@ -219,13 +233,61 @@ class Job
         $name = array(
             'Job{' . $this->queue .'}'
         );
+
         if(!empty($this->payload['id'])) {
             $name[] = 'ID: ' . $this->payload['id'];
         }
+
         $name[] = $this->payload['class'];
+
         if(!empty($this->payload['args'])) {
             $name[] = json_encode($this->payload['args']);
         }
+
         return '(' . implode(' | ', $name) . ')';
+    }
+
+    /**
+     * @see ArrayAccess::offsetSet()
+     */
+    public function offsetSet($offset, $value)
+    {
+        if (is_null($offset)) {
+            $this->payload[] = $value;
+        } else {
+            $this->payload[$offset] = $value;
+        }
+    }
+
+    /**
+     * @see ArrayAccess::offsetExists()
+     */
+    public function offsetExists($offset)
+    {
+        return isset($this->payload[$offset]);
+    }
+
+    /**
+     * @see ArrayAccess::offsetUnset()
+     */
+    public function offsetUnset($offset)
+    {
+        unset($this->payload[$offset]);
+    }
+
+    /**
+     * @see ArrayAccess::offsetGet()
+     */
+    public function offsetGet($offset)
+    {
+        return isset($this->payload[$offset]) ? $this->payload[$offset] : null;
+    }
+
+    /**
+     * @see IteratorAggregate::getIterator()
+     */
+    public function getIterator()
+    {
+        return new \ArrayIterator($this->payload);
     }
 }
