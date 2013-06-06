@@ -205,11 +205,37 @@ class Status
         if ($this->isTracking === null) {
             $this->isTracking = (boolean)$this->client->exists($this->getHashKey());
             if ($this->isTracking) {
-                $this->attributes = array_merge($this->attributes, $this->client->hgetall($this->getHashKey()));
-                $this->loaded     = true;
+                $this->load();
             }
         }
         return $this->isTracking;
+    }
+
+    /**
+     * Loads all status attributes
+     *
+     * @throws LogicException
+     */
+    public function load()
+    {
+        if ($this->loaded) {
+            throw new LogicException('The status is already loaded. Use another instance.');
+        }
+
+        $this->attributes = array_merge($this->attributes, $this->client->hgetall($this->getHashKey()));
+        $this->loaded     = true;
+    }
+
+    /**
+     * @return array<string => mixed>
+     */
+    public function getAll()
+    {
+        if ($this->loaded) {
+            return $this->attributes;
+        }
+
+        return $this->hgetall($this->getHashKey());
     }
 
     /**
