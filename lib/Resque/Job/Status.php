@@ -235,7 +235,7 @@ class Status
             return $this->attributes;
         }
 
-        return $this->hgetall($this->getHashKey());
+        return $this->client->hgetall($this->getHashKey());
     }
 
     /**
