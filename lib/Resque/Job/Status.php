@@ -49,7 +49,7 @@ class Status
      *
      * @var array<int>
      */
-    protected static $valid = array(
+    public  static $valid = array(
         self::STATUS_WAITING   => 'waiting',
         self::STATUS_RUNNING   => 'running',
         self::STATUS_FAILED    => 'failed',
@@ -62,7 +62,7 @@ class Status
      *
      * @var array<int>
      */
-    protected static $complete = array(
+    public static $complete = array(
         self::STATUS_FAILED,
         self::STATUS_COMPLETE,
         self::STATUS_RECREATED
@@ -322,6 +322,14 @@ class Status
     public function getComplete()
     {
         return self::$complete;
+    }
+
+    /**
+     * Convenience method to to check if a resque job has a complete status
+     */
+    public function isComplete()
+    {
+        return in_array($this->get(), self::$complete);
     }
 
 }
