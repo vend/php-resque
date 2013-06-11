@@ -305,4 +305,23 @@ class Status
     {
         return 'job:' . $this->id . ':status/hash';
     }
+
+    /**
+     * Accessor to return valid statuses
+     * @return \Resque\Job\array<int>
+     */
+    public function getValid()
+    {
+        return self::$valid;
+    }
+
+    /**
+     * Accessor to return complete statuses
+     * @return \Resque\Job\array<int>
+     */
+    public function getComplete()
+    {
+        return self::$complete;
+    }
+
 }
