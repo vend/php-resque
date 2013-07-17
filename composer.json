@@ -1,0 +1,33 @@
+{
+    "_-x-vim-formatting": " vim: set ft=javascript ts=4 sw=4 et : ",
+
+    "name":        "vend/resque",
+    "description": "Originally PSR port of chrisbolton/php-resque, supports Predis, more DI",
+    "license":     "MIT",
+
+    "authors": [
+        {
+            "name": "Chris Boulton",
+            "email": "chris@bigcommerce.com"
+        },
+        {
+            "name": "Vend Devteam",
+            "email": "devteam@vendhq.com"
+        }
+    ],
+
+    "autoload": {
+        "psr-0": {
+            "": "lib/"
+        }
+    },
+
+    "minimum-stability": "dev",
+
+    "require": {
+        "php":                ">=5.3.0",
+        "ext-pcntl":          "*",
+
+        "predis/predis":      "0.8.*"
+    }
+}
