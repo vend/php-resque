@@ -11,6 +11,6 @@ namespace Resque;
  * @copyright	(c) 2010 Chris Boulton
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class Exception extends Exception
+class Exception extends \Exception
 {
 }
