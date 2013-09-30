@@ -109,6 +109,14 @@ class Status
     }
 
     /**
+     * @return string
+     */
+    public function getId()
+    {
+        return $this->id;
+    }
+
+    /**
      * Create a new status monitor item for the supplied job ID. Will create
      * all necessary keys in Redis to monitor the status of a job.
      *
@@ -331,5 +339,4 @@ class Status
     {
         return in_array($this->get(), self::$complete);
     }
-
 }
