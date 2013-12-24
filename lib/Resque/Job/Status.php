@@ -11,7 +11,7 @@ use \InvalidArgumentException;
  * Modified from the original Resque\Status tracker to use a hash; preventing
  * race conditions in updating a single property of the status.
  *
- * @author    Dominic Scheirlinck <dominic@varspool.com>
+ * @author    Dominic Scheirlinck <dominic@vendhq.com>
  * @author    Chris Boulton <chris.boulton@interspire.com>
  * @copyright (c) 2010 Chris Boulton
  * @license   http://www.opensource.org/licenses/mit-license.php

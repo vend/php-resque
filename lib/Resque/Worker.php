@@ -15,7 +15,9 @@ use Resque\Util\Log;
  * Resque worker that handles checking queues for jobs, fetching them
  * off the queues, running them and handling the result.
  *
- * @license    http://www.opensource.org/licenses/mit-license.php
+ * @package		Resque/Worker
+ * @author		Chris Boulton <chris@bigcommerce.com>
+ * @license		http://www.opensource.org/licenses/mit-license.php
  */
 abstract class Worker extends Configurable
 {

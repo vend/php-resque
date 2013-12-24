@@ -8,10 +8,9 @@ use \stdClass;
 /**
  * Redis backend for storing failed Resque jobs.
  *
- * @package        Resque/Failure
- * @author        Chris Boulton <chris.boulton@interspire.com>
- * @copyright    (c) 2010 Chris Boulton
- * @license        http://www.opensource.org/licenses/mit-license.php
+ * @package		Resque/Failure
+ * @author		Chris Boulton <chris@bigcommerce.com>
+ * @license		http://www.opensource.org/licenses/mit-license.php
  */
 class Redis implements FailureBackend
 {

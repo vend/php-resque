@@ -10,8 +10,7 @@ use \Exception;
  * Failed Resque job.
  *
  * @package		Resque/Failure
- * @author		Chris Boulton <chris.boulton@interspire.com>
- * @copyright	(c) 2010 Chris Boulton
+ * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
 class Failure

@@ -13,9 +13,9 @@ use Resque\Job\DontPerformException;
 /**
  * Resque job.
  *
- * @author        Chris Boulton <chris.boulton@interspire.com>
- * @copyright    (c) 2010 Chris Boulton
- * @license        http://www.opensource.org/licenses/mit-license.php
+ * @package		Resque/Job
+ * @author		Chris Boulton <chris@bigcommerce.com>
+ * @license		http://www.opensource.org/licenses/mit-license.php
  */
 class Job implements ArrayAccess, IteratorAggregate
 {
