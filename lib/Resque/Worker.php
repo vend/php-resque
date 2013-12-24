@@ -1,5 +1,6 @@
 <?php
 
+
 namespace Resque;
 
 use Resque\Statistic;
@@ -21,10 +22,16 @@ use Resque\Util\Log;
  */
 abstract class Worker extends Configurable
 {
+
     /**
      * @var string String identifying this worker.
      */
     protected $id;
+
+    /**
+     * @var LoggerInterface Logging object that impliments the PSR-3 LoggerInterface
+     */
+    public $logger;
 
     /**
      * @var array Array of all associated queues for this worker.
@@ -663,5 +670,15 @@ abstract class Worker extends Configurable
     public function getStatistic($name)
     {
         return new Statistic($this->resque, $name. ':' . $this->getId());
+    }
+
+    /**
+     * Inject the logging object into the worker
+     *
+     * @param Psr\Log\LoggerInterface $logger
+     */
+    public function setLogger(Psr\Log\LoggerInterface $logger)
+    {
+        $this->logger = $logger;
     }
 }
