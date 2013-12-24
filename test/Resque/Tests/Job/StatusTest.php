@@ -1,4 +1,9 @@
 <?php
+<<<<<<< Updated upstream:lib/Resque/Tests/Job/StatusTest.php
+=======
+<<<<<<< HEAD:lib/Resque/Tests/JobStatusTest.php
+require_once dirname(__FILE__) . '/bootstrap.php';
+>>>>>>> Stashed changes:lib/Resque/Tests/JobStatusTest.php
 
 namespace Resque\Tests\Job;
 
@@ -7,26 +12,38 @@ use Resque\Tests\TestCase;
 use Resque\Tests\Mock\Resque;
 use Resque\Job\Status;
 
+=======
+>>>>>>> chrisboulton/master:test/Resque/Tests/JobStatusTest.php
 /**
  * Status tests.
  *
  * @package		Resque/Tests
- * @author		Chris Boulton <chris.boulton@interspire.com>
- * @copyright	(c) 2010 Chris Boulton
+ * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
 class StatusTest extends TestCase
 {
+    /**
+     * @var \Resque_Worker
+     */
+    protected $worker;
+
 	public function setUp()
 	{
 		parent::setUp();
 
+<<<<<<< Updated upstream:lib/Resque/Tests/Job/StatusTest.php
 		$this->resque = new Resque();
 	}
 
 	public function testConstructor()
 	{
         $status = new Status(md5(time()), $this->resque);
+=======
+		// Register a worker to test with
+		$this->worker = new Resque_Worker('jobs');
+		$this->worker->setLogger(new Resque_Log());
+>>>>>>> Stashed changes:lib/Resque/Tests/JobStatusTest.php
 	}
 
 	public function testJobStatusCanBeTracked()
@@ -49,6 +66,7 @@ class StatusTest extends TestCase
 		$status = new Status($token);
 		$this->assertEquals(Status::STATUS_WAITING, $status->get());
 	}
+
 	public function testRunningJobReturnsRunningStatus()
 	{
 		$token = Resque::enqueue('jobs', 'Failing_Job', null, true);

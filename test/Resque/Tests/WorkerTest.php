@@ -1,13 +1,15 @@
 <?php
+<<<<<<< Updated upstream
 
 namespace Resque\Tests;
 
+=======
+>>>>>>> Stashed changes
 /**
  * Resque_Worker tests.
  *
  * @package		Resque/Tests
- * @author		Chris Boulton <chris.boulton@interspire.com>
- * @copyright	(c) 2010 Chris Boulton
+ * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
 class WorkerTest extends TestCase
@@ -15,7 +17,12 @@ class WorkerTest extends TestCase
 	public function testWorkerRegistersInList()
 	{
 		$worker = new Resque_Worker('*');
+<<<<<<< HEAD:lib/Resque/Tests/WorkerTest.php
 		$worker->register();
+=======
+		$worker->setLogger(new Resque_Log());
+		$worker->registerWorker();
+>>>>>>> chrisboulton/master:test/Resque/Tests/WorkerTest.php
 
 		// Make sure the worker is in the list
 		$this->assertTrue((bool)$this->redis->sismember('resque:workers', (string)$worker));
@@ -27,7 +34,12 @@ class WorkerTest extends TestCase
 		// Register a few workers
 		for($i = 0; $i < $num; ++$i) {
 			$worker = new Resque_Worker('queue_' . $i);
+<<<<<<< HEAD:lib/Resque/Tests/WorkerTest.php
 			$worker->register();
+=======
+			$worker->setLogger(new Resque_Log());
+			$worker->registerWorker();
+>>>>>>> chrisboulton/master:test/Resque/Tests/WorkerTest.php
 		}
 
 		// Now try to get them
@@ -37,7 +49,12 @@ class WorkerTest extends TestCase
 	public function testGetWorkerById()
 	{
 		$worker = new Resque_Worker('*');
+<<<<<<< HEAD:lib/Resque/Tests/WorkerTest.php
 		$worker->register();
+=======
+		$worker->setLogger(new Resque_Log());
+		$worker->registerWorker();
+>>>>>>> chrisboulton/master:test/Resque/Tests/WorkerTest.php
 
 		$newWorker = Resque_Worker::find((string)$worker);
 		$this->assertEquals((string)$worker, (string)$newWorker);
@@ -51,8 +68,14 @@ class WorkerTest extends TestCase
 	public function testWorkerCanUnregister()
 	{
 		$worker = new Resque_Worker('*');
+<<<<<<< HEAD:lib/Resque/Tests/WorkerTest.php
 		$worker->register();
 		$worker->unregister();
+=======
+		$worker->setLogger(new Resque_Log());
+		$worker->registerWorker();
+		$worker->unregisterWorker();
+>>>>>>> chrisboulton/master:test/Resque/Tests/WorkerTest.php
 
 		$this->assertFalse(Resque_Worker::exists((string)$worker));
 		$this->assertEquals(array(), Resque_Worker::all());
@@ -62,6 +85,7 @@ class WorkerTest extends TestCase
 	public function testPausedWorkerDoesNotPickUpJobs()
 	{
 		$worker = new Resque_Worker('*');
+		$worker->setLogger(new Resque_Log());
 		$worker->pauseProcessing();
 		Resque::enqueue('jobs', 'Test_Job');
 		$worker->work(0);
@@ -72,6 +96,7 @@ class WorkerTest extends TestCase
 	public function testResumedWorkerPicksUpJobs()
 	{
 		$worker = new Resque_Worker('*');
+		$worker->setLogger(new Resque_Log());
 		$worker->pauseProcessing();
 		Resque::enqueue('jobs', 'Test_Job');
 		$worker->work(0);
@@ -87,7 +112,12 @@ class WorkerTest extends TestCase
 			'queue1',
 			'queue2'
 		));
+<<<<<<< HEAD:lib/Resque/Tests/WorkerTest.php
 		$worker->register();
+=======
+		$worker->setLogger(new Resque_Log());
+		$worker->registerWorker();
+>>>>>>> chrisboulton/master:test/Resque/Tests/WorkerTest.php
 		Resque::enqueue('queue1', 'Test_Job_1');
 		Resque::enqueue('queue2', 'Test_Job_2');
 
@@ -105,7 +135,12 @@ class WorkerTest extends TestCase
 			'medium',
 			'low'
 		));
+<<<<<<< HEAD:lib/Resque/Tests/WorkerTest.php
 		$worker->register();
+=======
+		$worker->setLogger(new Resque_Log());
+		$worker->registerWorker();
+>>>>>>> chrisboulton/master:test/Resque/Tests/WorkerTest.php
 
 		// Queue the jobs in a different order
 		Resque::enqueue('low', 'Test_Job_1');
@@ -126,7 +161,12 @@ class WorkerTest extends TestCase
 	public function testWildcardQueueWorkerWorksAllQueues()
 	{
 		$worker = new Resque_Worker('*');
+<<<<<<< HEAD:lib/Resque/Tests/WorkerTest.php
 		$worker->register();
+=======
+		$worker->setLogger(new Resque_Log());
+		$worker->registerWorker();
+>>>>>>> chrisboulton/master:test/Resque/Tests/WorkerTest.php
 
 		Resque::enqueue('queue1', 'Test_Job_1');
 		Resque::enqueue('queue2', 'Test_Job_2');
@@ -141,7 +181,12 @@ class WorkerTest extends TestCase
 	public function testWorkerDoesNotWorkOnUnknownQueues()
 	{
 		$worker = new Resque_Worker('queue1');
+<<<<<<< HEAD:lib/Resque/Tests/WorkerTest.php
 		$worker->register();
+=======
+		$worker->setLogger(new Resque_Log());
+		$worker->registerWorker();
+>>>>>>> chrisboulton/master:test/Resque/Tests/WorkerTest.php
 		Resque::enqueue('queue2', 'Test_Job');
 
 		$this->assertFalse($worker->reserve());
@@ -151,6 +196,7 @@ class WorkerTest extends TestCase
 	{
 		Resque::enqueue('jobs', 'Test_Job');
 		$worker = new Resque_Worker('jobs');
+		$worker->setLogger(new Resque_Log());
 		$job = $worker->reserve();
 		$worker->workingOn($job);
 		$worker->doneWorking();
@@ -160,7 +206,12 @@ class WorkerTest extends TestCase
 	public function testWorkerRecordsWhatItIsWorkingOn()
 	{
 		$worker = new Resque_Worker('jobs');
+<<<<<<< HEAD:lib/Resque/Tests/WorkerTest.php
 		$worker->register();
+=======
+		$worker->setLogger(new Resque_Log());
+		$worker->registerWorker();
+>>>>>>> chrisboulton/master:test/Resque/Tests/WorkerTest.php
 
 		$payload = array(
 			'class' => 'Test_Job'
@@ -182,6 +233,7 @@ class WorkerTest extends TestCase
 		Resque::enqueue('jobs', 'Invalid_Job');
 
 		$worker = new Resque_Worker('jobs');
+		$worker->setLogger(new Resque_Log());
 		$worker->work(0);
 		$worker->work(0);
 
@@ -193,15 +245,22 @@ class WorkerTest extends TestCase
 	{
 		// Register a good worker
 		$goodWorker = new Resque_Worker('jobs');
+<<<<<<< HEAD:lib/Resque/Tests/WorkerTest.php
 		$goodWorker->register();
+=======
+		$goodWorker->setLogger(new Resque_Log());
+		$goodWorker->registerWorker();
+>>>>>>> chrisboulton/master:test/Resque/Tests/WorkerTest.php
 		$workerId = explode(':', $goodWorker);
 
 		// Register some bad workers
 		$worker = new Resque_Worker('jobs');
+		$worker->setLogger(new Resque_Log());
 		$worker->setId($workerId[0].':1:jobs');
 		$worker->register();
 
 		$worker = new Resque_Worker(array('high', 'low'));
+		$worker->setLogger(new Resque_Log());
 		$worker->setId($workerId[0].':2:high,low');
 		$worker->register();
 
@@ -217,12 +276,14 @@ class WorkerTest extends TestCase
 	{
 		// Register a bad worker on this machine
 		$worker = new Resque_Worker('jobs');
+		$worker->setLogger(new Resque_Log());
 		$workerId = explode(':', $worker);
 		$worker->setId($workerId[0].':1:jobs');
 		$worker->register();
 
 		// Register some other false workers
 		$worker = new Resque_Worker('jobs');
+		$worker->setLogger(new Resque_Log());
 		$worker->setId('my.other.host:1:jobs');
 		$worker->register();
 
@@ -239,7 +300,12 @@ class WorkerTest extends TestCase
 	public function testWorkerFailsUncompletedJobsOnExit()
 	{
 		$worker = new Resque_Worker('jobs');
+<<<<<<< HEAD:lib/Resque/Tests/WorkerTest.php
 		$worker->register();
+=======
+		$worker->setLogger(new Resque_Log());
+		$worker->registerWorker();
+>>>>>>> chrisboulton/master:test/Resque/Tests/WorkerTest.php
 
 		$payload = array(
 			'class' => 'Test_Job'
@@ -251,4 +317,28 @@ class WorkerTest extends TestCase
 
 		$this->assertEquals(1, Statistic::get('failed'));
 	}
+
+    public function testBlockingListPop()
+    {
+        $worker = new Resque_Worker('jobs');
+		$worker->setLogger(new Resque_Log());
+        $worker->registerWorker();
+
+        Resque::enqueue('jobs', 'Test_Job_1');
+        Resque::enqueue('jobs', 'Test_Job_2');
+
+        $i = 1;
+        while($job = $worker->reserve(true, 1))
+        {
+            $this->assertEquals('Test_Job_' . $i, $job->payload['class']);
+
+            if($i == 2) {
+                break;
+            }
+
+            $i++;
+        }
+
+        $this->assertEquals(2, $i);
+    }
 }

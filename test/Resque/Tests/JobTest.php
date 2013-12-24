@@ -6,8 +6,7 @@ namespace Resque\Tests;
  * Resque_Job tests.
  *
  * @package		Resque/Tests
- * @author		Chris Boulton <chris.boulton@interspire.com>
- * @copyright	(c) 2010 Chris Boulton
+ * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
 class JobTest extends TestCase
@@ -20,7 +19,8 @@ class JobTest extends TestCase
 
 		// Register a worker to test with
 		$this->worker = new Resque_Worker('jobs');
-		$this->worker->register();
+		$this->worker->setLogger(new Resque_Log());
+		$this->worker->registerWorker();
 	}
 
 	public function testJobCanBeQueued()
@@ -98,7 +98,7 @@ class JobTest extends TestCase
 
 		$newJob = Resque_Job::reserve('jobs');
 		$this->assertEquals($job->payload['class'], $newJob->payload['class']);
-		$this->assertEquals($job->payload['args'], $newJob->getArguments());
+		$this->assertEquals($job->getArguments(), $newJob->getArguments());
 	}
 
 
