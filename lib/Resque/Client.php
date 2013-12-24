@@ -1,6 +1,6 @@
 <?php
 
-namespace Resque\Client;
+namespace Resque;
 
 /**
  * Client interface
@@ -18,4 +18,6 @@ namespace Resque\Client;
 interface Client
 {
     public function set($key, $value);
+
+    public function llen($key);
 }
