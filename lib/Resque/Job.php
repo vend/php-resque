@@ -2,7 +2,6 @@
 
 namespace Resque;
 
-
 use \ArrayAccess;
 use \ArrayIterator;
 use \IteratorAggregate;
@@ -152,8 +151,6 @@ class Job implements ArrayAccess, IteratorAggregate
     {
         $instance = $this->getInstance();
         try {
-            $this->worker->notifyEvent('beforePerform', $this);
-
             if (method_exists($instance, 'setUp')) {
                 $instance->setUp();
             }
@@ -163,8 +160,6 @@ class Job implements ArrayAccess, IteratorAggregate
             if (method_exists($instance, 'tearDown')) {
                 $instance->tearDown();
             }
-
-            $this->worker->notifyEvent('afterPerform', $this);
         }
         // beforePerform/setUp have said don't perform this job. Return.
         catch(DontPerformException $e) {
@@ -181,11 +176,6 @@ class Job implements ArrayAccess, IteratorAggregate
      */
     public function fail($exception)
     {
-        $this->worker->notifyEvent('onFailure', array(
-            'exception' => $exception,
-            'job' => $this,
-        ));
-
         $this->updateStatus(Status::STATUS_FAILED);
 
         Failure::create(
