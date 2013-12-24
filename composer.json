@@ -22,11 +22,20 @@
         }
     },
 
+    "bin": [
+        "bin/resque"
+    ],
+
     "require": {
         "php":                ">=5.3.0",
         "ext-pcntl":          "*",
+        "psr/log":            "1.0.0"
+    },
 
-        "predis/predis":      "0.8.*"
+    "require-dev": {
+        "colinmollenhour/credis": "1.2.*",
+        "predis/predis":          "0.8.*",
+        "phpunit/phpunit":        "3.7.*"
     },
 
     "extra": {
@@ -34,5 +43,9 @@
             "dev-master": "2.1.x-dev",
             "dev-2.0":    "2.0.x-dev"
         }
+    },
+
+    "suggest": {
+        "ext-proctitle": "Allows php-resque to rename the title of UNIX processes to show the status of a worker."
     }
 }
