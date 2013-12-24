@@ -12,17 +12,7 @@
 >
 	<testsuites>
 		<testsuite name="Resque Test Suite">
-			<directory>lib/Resque/Tests</directory>
+			<directory>test</directory>
 		</testsuite>
 	</testsuites>
-
-	<filter>
-		<whitelist>
-			<directory suffix=".php">lib/Resque</directory>
-			<directory suffix=".php">lib/Resque/Util</directory>
-			<directory suffix=".php">lib/Resque/Job</directory>
-			<directory suffix=".php">lib/Resque/Failure</directory>
-			<directory suffix=".php">lib/Resque/Exception</directory>
-		</whitelist>
-	</filter>
 </phpunit>

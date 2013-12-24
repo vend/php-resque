@@ -18,7 +18,6 @@ usleep(500000);
 if($returnVar != 0) {
 	echo "Cannot start redis-server.\n";
 	exit(1);
-
 }
 
 // Get redis port from conf
@@ -27,8 +26,6 @@ if(!preg_match('#^\s*port\s+([0-9]+)#m', $config, $matches)) {
 	echo "Could not determine redis port from redis.conf";
 	exit(1);
 }
-
-Resque::setBackend('localhost:' . $matches[1]);
 
 // Shutdown
 function killRedis($pid)
