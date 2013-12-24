@@ -20,4 +20,10 @@ interface Client
     public function set($key, $value);
 
     public function llen($key);
+
+    public function sadd($key, $value);
+
+    public function rpush($key, $value);
+
+    public function sismember($key, $value);
 }

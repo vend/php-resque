@@ -32,7 +32,7 @@ abstract class Resque
     /**#@-*/
 
     /**
-     * @var Resque\Client
+     * @var \Resque\Client
      */
     private $client;
 
@@ -73,7 +73,7 @@ abstract class Resque
      * The Redis client can be any object that implements a suitable subset
      * of Redis commands.
      *
-     * @return Resque\Client
+     * @return \Resque\Client
      */
     public function getClient()
     {

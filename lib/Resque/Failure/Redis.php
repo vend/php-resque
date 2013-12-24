@@ -2,7 +2,8 @@
 
 namespace Resque\Failure;
 
-use Resque\Failure\FailureBackend;
+use Resque\Exception\Exception;
+use Resque\Worker;
 use \stdClass;
 
 /**

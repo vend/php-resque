@@ -3,14 +3,17 @@
 
 namespace Resque;
 
-use Resque\Statistic;
+use Psr\Log\LoggerAwareInterface;
 use Resque\Event;
 use Resque\Exception\Exception;
 use Resque\Job;
 use Resque\Job\DirtyExitException;
 use Resque\Job\Status;
 use Resque\Util\Configurable;
-use Resque\Util\Log;
+use Psr\Log\LogLevel;
+use Psr\Log\LoggerInterface;
+use \RuntimeException;
+
 
 /**
  * Resque worker that handles checking queues for jobs, fetching them
@@ -20,18 +23,17 @@ use Resque\Util\Log;
  * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-abstract class Worker extends Configurable
+abstract class Worker extends Configurable implements LoggerAwareInterface
 {
-
     /**
      * @var string String identifying this worker.
      */
     protected $id;
 
     /**
-     * @var LoggerInterface Logging object that impliments the PSR-3 LoggerInterface
+     * @var LoggerInterface Logging object that implements the PSR-3 LoggerInterface
      */
-    public $logger;
+    protected $logger;
 
     /**
      * @var array Array of all associated queues for this worker.
@@ -63,12 +65,21 @@ abstract class Worker extends Configurable
      */
     protected $resque;
 
-    abstract protected function notifyEvent($event, $job);
-    abstract protected function getClient();
-    abstract protected function createJobInstance($queue, $payload);
+    protected function getClient()
+    {
+        return $this->resque->getClient();
+    }
 
-    // @todo
-    // abstract protected function getClientRefresh();
+    /**
+     * @param $queue
+     * @param $payload
+     * @throws \LogicException
+     * @todo Get job name from payload
+     */
+    protected function createJobInstance($queue, $payload)
+    {
+        throw new \LogicException('unimplemented');
+    }
 
     /**
      * Instantiate a new worker, given a list of queues that it should be working
@@ -79,7 +90,9 @@ abstract class Worker extends Configurable
      * order. You can easily add new queues dynamically and have them worked on using
      * this method.
      *
+     * @param Resque $resque
      * @param string|array $queues String with a single queue name, array with multiple.
+     * @param array $options
      */
     public function __construct(Resque $resque, $queues, array $options = array())
     {
@@ -152,9 +165,8 @@ abstract class Worker extends Configurable
      * the current processes' PID/hostname. This means you can use setId() to
      * interrogate the properties of other workers given their ID.
      *
-     * @param string $id
-     * @return array(string hostname, int pid)
      * @throws Exception
+     * @return array(string hostname, int pid)
      */
     protected function getLocation()
     {
@@ -178,7 +190,7 @@ abstract class Worker extends Configurable
     /**
      * Set the ID of this worker to a given ID string.
      *
-     * @param string $workerId ID for the worker.
+     * @param string $id ID for the worker.
      */
     public function setId($id)
     {
@@ -188,7 +200,7 @@ abstract class Worker extends Configurable
     /**
      * Gives access to the main Resque system this worker belongs to
      *
-     * @return Resque\Resque
+     * @return \Resque\Resque
      */
     public function getResque()
     {
@@ -201,15 +213,15 @@ abstract class Worker extends Configurable
      * @param string $message
      * @param string $priority
      */
-    public function log($message, $priority = Log::INFO)
+    public function log($message, $priority = LogLevel::INFO)
     {
-        $this->resque->log($message, $priority);
+        $this->logger->log($message, $priority);
     }
 
     /**
      * Given a worker ID, check if it is registered/valid.
      *
-     * @param string $workerId ID of the worker.
+     * @param string $id ID of the worker.
      * @return boolean True if the worker exists, false if not.
      */
     public function exists($id)
@@ -259,7 +271,6 @@ abstract class Worker extends Configurable
             }
 
             $this->log('got ' . $job);
-            $this->notifyEvent('beforeFork', $job);
             $this->workingOn($job);
 
             $this->child = $this->fork();
@@ -285,7 +296,7 @@ abstract class Worker extends Configurable
                 pcntl_wait($status);
                 $exitStatus = pcntl_wexitstatus($status);
                 if($exitStatus !== 0) {
-                    $job->fail(new Job_DirtyExitException(
+                    $job->fail(new DirtyExitException(
                         'Job exited with exit code ' . $exitStatus
                     ));
                 }
@@ -306,7 +317,6 @@ abstract class Worker extends Configurable
     public function perform(Job $job)
     {
         try {
-            $this->notifyEvent('afterFork', $job);
             $job->perform();
         }
         catch(Exception $e) {
@@ -328,7 +338,7 @@ abstract class Worker extends Configurable
         $queues = $this->queues();
 
         if (!is_array($queues)) {
-            return;
+            return false;
         }
 
         // Each call to reserve, we check the queues in a different order
@@ -378,16 +388,19 @@ abstract class Worker extends Configurable
      *
      * Return values are those of pcntl_fork().
      *
-     * @return int -1 if the fork failed, 0 for the forked child, the PID of the child for the parent.
+     * @throws \RuntimeException
+     * @throws \Exception
+     * @return int|false -1 if the fork failed, 0 for the forked child, the PID of the child for the parent.
      */
     private function fork()
     {
-        if(!function_exists('pcntl_fork')) {
-            return false;
+        if (!function_exists('pcntl_fork')) {
+            throw new \Exception('pcntl not available, could not fork');
         }
 
         $pid = pcntl_fork();
-        if($pid === -1) {
+
+        if ($pid === -1) {
             throw new RuntimeException('Unable to fork child worker.');
         }
 
@@ -401,7 +414,6 @@ abstract class Worker extends Configurable
     {
         $this->registerSigHandlers();
         $this->pruneDeadWorkers();
-        $this->notifyEvent('beforeFirstFork', $this);
         $this->register();
     }
 
@@ -550,7 +562,7 @@ abstract class Worker extends Configurable
                 continue;
             }
 
-            $this->log('Pruning dead worker: ' . $id, Log::WARNING);
+            $this->log('Pruning dead worker: ' . $id, LogLevel::WARNING);
             $worker->unregister();
         }
     }
@@ -593,7 +605,7 @@ abstract class Worker extends Configurable
     /**
      * Tell Redis which job we're currently working on.
      *
-     * @param object $job Job instance containing the job we're working on.
+     * @param \Resque\Job $job Job instance containing the job we're working on.
      */
     public function workingOn(Job $job)
     {
@@ -637,7 +649,6 @@ abstract class Worker extends Configurable
     /**
      * Gets the key for where this worker will store its active job
      *
-     * @param string $worker
      * @return string
      */
     protected function getJobKey()
@@ -664,7 +675,7 @@ abstract class Worker extends Configurable
     /**
      * Get a statistic belonging to this worker.
      *
-     * @param string $stat Statistic to fetch.
+     * @param string $name Statistic to fetch.
      * @return int Statistic value.
      */
     public function getStatistic($name)
@@ -675,9 +686,10 @@ abstract class Worker extends Configurable
     /**
      * Inject the logging object into the worker
      *
-     * @param Psr\Log\LoggerInterface $logger
+     * @param LoggerInterface $logger
+     * @return void
      */
-    public function setLogger(Psr\Log\LoggerInterface $logger)
+    public function setLogger(LoggerInterface $logger)
     {
         $this->logger = $logger;
     }
