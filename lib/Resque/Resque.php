@@ -2,6 +2,8 @@
 
 namespace Resque;
 
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LoggerInterface;
 use Resque\Exception;
 use Resque\Job;
 use Resque\Job\Status;
@@ -14,7 +16,7 @@ use \InvalidArgumentException;
  *
  * @license        http://www.opensource.org/licenses/mit-license.php
  */
-abstract class Resque
+abstract class Resque implements LoggerAwareInterface
 {
     /**
      * @var string
@@ -40,6 +42,11 @@ abstract class Resque
      * @var array<string => mixed>
      */
     protected $options;
+
+    /**
+     * @var LoggerInterface
+     */
+    protected $logger;
 
     /**
      * Constructor
@@ -83,9 +90,14 @@ abstract class Resque
     /**
      * Causes the client to reconnect to the Redis server
      *
+     * @throws \LogicException
      * @return void
+     * @todo Check client compatibility
      */
-    abstract public function reconnect();
+    public function reconnect()
+    {
+        throw new \LogicException('Not implemented');
+    }
 
     /**
      * Logs a message
@@ -94,7 +106,10 @@ abstract class Resque
      * @param string $priority
      * @return void
      */
-    abstract public function log($message, $priority = Log::INFO);
+    public function log($message, $priority = LogLevel::INFO)
+    {
+        $this->logger->log($message, $priority);
+    }
 
     /**
      * Gets a namespaced/prefixed key for the given key suffix
@@ -157,6 +172,7 @@ abstract class Resque
      * @param string $class The name of the class that contains the code to execute the job.
      * @param array $args Any optional arguments that should be passed when the job is executed.
      * @param boolean $trackStatus Set to true to be able to monitor the status of a job.
+     * @throws \InvalidArgumentException
      * @return string
      */
     public function enqueue($queue, $class, $args = null, $trackStatus = false)
@@ -243,8 +259,6 @@ abstract class Resque
             implode($grep_args, ' ')
         );
 
-        $output = exec($command);
-
         $pids = array();
         $output = null;
         $return = null;
@@ -252,7 +266,7 @@ abstract class Resque
         exec($command, $output, $return);
 
         if ($return !== 0) {
-            $this->log('Unable to determine worker PIDs');
+            $this->logger->warning('Unable to determine worker PIDs');
             return false;
         }
 
@@ -279,5 +293,14 @@ abstract class Resque
     public function getStatistic($name)
     {
         return new Statistic($this, $name);
+    }
+
+    /**
+     * @param LoggerInterface $logger
+     * @return void
+     */
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
     }
 }

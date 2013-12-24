@@ -13,17 +13,22 @@ namespace Resque;
  *
  * The following clients should be compatible:
  *  - Predis\Client
- *  - Redisent
+ *  - Credis
  */
 interface Client
 {
+    public function get($key);
     public function set($key, $value);
+    public function del($key);
 
+    public function incrby($key, $int);
+    public function decrby($key, $int);
+
+    public function lpop($key);
     public function llen($key);
-
-    public function sadd($key, $value);
-
     public function rpush($key, $value);
 
+    public function sadd($key, $value);
     public function sismember($key, $value);
+    public function smembers($key);
 }

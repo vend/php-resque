@@ -46,6 +46,7 @@ class Redis implements FailureBackend
      * wrapping exceptions.
      *
      * @param \Exception $exception
+     * @return array
      */
     protected function getBacktrace(\Exception $exception)
     {
@@ -72,7 +73,7 @@ class Redis implements FailureBackend
     /**
      * Find the ultimate cause exception, by following previous members right back
      *
-     * @param Exception $exception
+     * @param \Exception|\Resque\Exception\Exception $exception
      * @return Exception
      */
     protected function getDistalCause(\Exception $exception)
@@ -86,7 +87,7 @@ class Redis implements FailureBackend
     /**
      * Find the class names of the exceptions
      *
-     * @param Exception $exception
+     * @param \Exception|\Resque\Exception\Exception $exception
      * @return string
      */
     protected function getClass(\Exception $exception)
