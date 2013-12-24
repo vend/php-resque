@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit bootstrap="lib/Resque/Tests/bootstrap.php">
+<phpunit backupGlobals="false"
+	bootstrap="test/bootstrap.php"
+	backupStaticAttributes="false"
+	colors="true"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+	processIsolation="false"
+	stopOnFailure="false"
+	syntaxCheck="false"
+>
 	<testsuites>
 		<testsuite name="Resque Test Suite">
 			<directory>lib/Resque/Tests</directory>
