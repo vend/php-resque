@@ -32,17 +32,22 @@ abstract class Resque
     /**#@-*/
 
     /**
+     * @var Resque\Client
+     */
+    private $client;
+
+    /**
      * @var array<string => mixed>
      */
     protected $options;
 
     /**
      * Constructor
-     *
-     * Override this in your subclass to
      */
-    public function __construct(array $options = array())
+    public function __construct($client, array $options = array())
     {
+        $this->client = $client;
+
         $this->configure($options);
     }
 
@@ -63,14 +68,17 @@ abstract class Resque
     }
 
     /**
-     * Gets a Redis client
+     * Gets the underlying Redis client
      *
      * The Redis client can be any object that implements a suitable subset
      * of Redis commands.
      *
-     * @return object (e.g. Predis\Client)
+     * @return Resque\Client
      */
-    abstract public function getClient();
+    public function getClient()
+    {
+        return $this->client;
+    }
 
     /**
      * Causes the client to reconnect to the Redis server
