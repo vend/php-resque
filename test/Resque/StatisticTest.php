@@ -1,10 +1,7 @@
 <?php
-<<<<<<< Updated upstream:lib/Resque/Tests/StatisticTest.php
 
-namespace Resque\Tests;
+namespace Resque;
 
-=======
->>>>>>> Stashed changes:lib/Resque/Tests/StatTest.php
 /**
  * Statistic tests.
  *
@@ -12,7 +9,7 @@ namespace Resque\Tests;
  * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class StatisticTest extends TestCase
+class StatisticTest extends \PHPUnit_Framework_TestCase
 {
 	public function testStatCanBeIncremented()
 	{

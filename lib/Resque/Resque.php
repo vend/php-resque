@@ -16,7 +16,7 @@ use \InvalidArgumentException;
  *
  * @license        http://www.opensource.org/licenses/mit-license.php
  */
-abstract class Resque implements LoggerAwareInterface
+class Resque implements LoggerAwareInterface
 {
     /**
      * @var string
@@ -70,7 +70,8 @@ abstract class Resque implements LoggerAwareInterface
             'ps'        => '/bin/ps',
             'ps_args'   => array('-A', '-o', 'pid,command'),
             'grep'      => '/bin/grep',
-            'grep_args' => array('[r]esque[^-]')
+            'grep_args' => array('[r]esque[^-]'),
+            'prefix'    => 'resque:'
         ), $options);
     }
 
@@ -117,7 +118,10 @@ abstract class Resque implements LoggerAwareInterface
      * @param string $key
      * @return string
      */
-    abstract public function getKey($key);
+    public function getKey($key)
+    {
+        return $this->options['prefix'] . $key;
+    }
 
     /**
      * Push a job to the end of a specific queue. If the queue does not

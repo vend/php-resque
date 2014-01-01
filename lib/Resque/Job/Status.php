@@ -2,6 +2,7 @@
 
 namespace Resque\Job;
 
+use LogicException;
 use Resque\Resque;
 use \InvalidArgumentException;
 
@@ -86,7 +87,7 @@ class Status
     protected $attributes = array();
 
     /**
-     * @var Predis\Client
+     * @var \Resque\Client
      */
     protected $client;
 
@@ -101,6 +102,7 @@ class Status
      * Setup a new instance of the job monitor class for the supplied job ID.
      *
      * @param string $id The ID of the job to manage the status for.
+     * @param \Resque\Resque $resque
      */
     public function __construct($id, Resque $resque)
     {
@@ -119,8 +121,6 @@ class Status
     /**
      * Create a new status monitor item for the supplied job ID. Will create
      * all necessary keys in Redis to monitor the status of a job.
-     *
-     * @param string $id The ID of the job to monitor the status of.
      */
     public function create()
     {
@@ -198,6 +198,7 @@ class Status
      * properly updated.
      *
      * @param int The status of the job (see constants in Resque\Job\Status)
+     * @throws \InvalidArgumentException
      * @return void
      */
     public function update($status)
@@ -246,7 +247,7 @@ class Status
     public function load()
     {
         if ($this->loaded) {
-            throw new LogicException('The status is already loaded. Use another instance.');
+            throw new \LogicException('The status is already loaded. Use another instance.');
         }
 
         $this->attributes = array_merge($this->attributes, $this->client->hgetall($this->getHashKey()));

@@ -1,19 +1,13 @@
 <?php
-<<<<<<< Updated upstream:lib/Resque/Tests/Job/StatusTest.php
-=======
-<<<<<<< HEAD:lib/Resque/Tests/JobStatusTest.php
-require_once dirname(__FILE__) . '/bootstrap.php';
->>>>>>> Stashed changes:lib/Resque/Tests/JobStatusTest.php
 
-namespace Resque\Tests\Job;
+namespace Resque\Job;
 
-use Resque\Tests\TestCase;
+use Predis\Client;
+use Resque\Log;
+use Resque\Resque;
+use Resque\TestCase;
+use Resque\Worker;
 
-use Resque\Tests\Mock\Resque;
-use Resque\Job\Status;
-
-=======
->>>>>>> chrisboulton/master:test/Resque/Tests/JobStatusTest.php
 /**
  * Status tests.
  *
@@ -21,7 +15,7 @@ use Resque\Job\Status;
  * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class StatusTest extends TestCase
+class StatusTest extends \PHPUnit_Framework_TestCase
 {
     /**
      * @var \Resque_Worker
@@ -32,24 +26,24 @@ class StatusTest extends TestCase
 	{
 		parent::setUp();
 
-<<<<<<< Updated upstream:lib/Resque/Tests/Job/StatusTest.php
-		$this->resque = new Resque();
+        $client = new Client();
+
+		$this->resque = new Resque($client);
+
+        // Register a worker to test with
+        $this->worker = new Worker($this->resque, 'jobs');
+        $this->worker->setLogger(new Log());
 	}
 
 	public function testConstructor()
 	{
         $status = new Status(md5(time()), $this->resque);
-=======
-		// Register a worker to test with
-		$this->worker = new Resque_Worker('jobs');
-		$this->worker->setLogger(new Resque_Log());
->>>>>>> Stashed changes:lib/Resque/Tests/JobStatusTest.php
 	}
 
 	public function testJobStatusCanBeTracked()
 	{
 		$token = Resque::enqueue('jobs', 'Test_Job', null, true);
-		$status = new Status($token);
+		$status = new Status($token, $this->getMock('Resque\Resque'));
 		$this->assertTrue($status->isTracking());
 	}
 

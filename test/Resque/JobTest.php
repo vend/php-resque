@@ -1,6 +1,8 @@
 <?php
 
-namespace Resque\Tests;
+namespace Resque;
+
+use Resque\Test;
 
 /**
  * Resque_Job tests.
@@ -9,7 +11,7 @@ namespace Resque\Tests;
  * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class JobTest extends TestCase
+class JobTest extends Test
 {
 	protected $worker;
 
@@ -18,19 +20,22 @@ class JobTest extends TestCase
 		parent::setUp();
 
 		// Register a worker to test with
-		$this->worker = new Resque_Worker('jobs');
-		$this->worker->setLogger(new Resque_Log());
+		$this->worker = new Worker($this->getResque(), 'jobs');
+		$this->worker->setLogger(new Log());
 		$this->worker->registerWorker();
 	}
 
 	public function testJobCanBeQueued()
 	{
-		$this->assertTrue((bool)Resque::enqueue('jobs', 'Test_Job'));
+		$this->assertTrue((bool)$this->getResque()->enqueue('jobs', 'Test_Job'));
 	}
 
 	public function testQeueuedJobCanBeReserved()
 	{
-		Resque::enqueue('jobs', 'Test_Job');
+		$this->getResque()->enqueue('jobs', 'Test_Job');
+
+        $worker = new Worker($this->getResque(), 'jobs');
+        $worker->reserve();
 
 		$job = Resque_Job::reserve('jobs');
 		if($job == false) {
