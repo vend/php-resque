@@ -31,4 +31,6 @@ interface Client
     public function sadd($key, $value);
     public function sismember($key, $value);
     public function smembers($key);
+
+    public function flushdb($db = null);
 }
