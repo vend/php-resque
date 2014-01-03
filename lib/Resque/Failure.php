@@ -4,7 +4,6 @@ namespace Resque;
 
 use Resque\Failure\FailureBackend;
 use Resque\Failure\Redis;
-use \Exception;
 
 /**
  * Failed Resque job.
@@ -28,7 +27,7 @@ class Failure
 	 * @param \Resque\Worker $worker  Instance of Worker that was running this job when it failed.
 	 * @param string $queue          The name of the queue that this job was fetched from.
 	 */
-	public static function create($payload, Exception $exception, Worker $worker, $queue)
+	public static function create($payload, \Exception $exception, Worker $worker, $queue)
 	{
 		$backend = self::getBackend();
 		new $backend($payload, $exception, $worker, $queue);
