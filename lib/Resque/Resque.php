@@ -4,6 +4,7 @@ namespace Resque;
 
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
+use Psr\Log\LogLevel;
 use Resque\Exception;
 use Resque\Job;
 use Resque\Job\Status;
@@ -67,11 +68,10 @@ class Resque implements LoggerAwareInterface
     public function configure(array $options)
     {
         $this->options = array_merge(array(
-            'ps'        => '/bin/ps',
-            'ps_args'   => array('-A', '-o', 'pid,command'),
-            'grep'      => '/bin/grep',
-            'grep_args' => array('[r]esque[^-]'),
-            'prefix'    => 'resque:'
+            'pgrep'           => 'pgrep -f',
+            'pgrep_pattern'   => '[r]esque[^-]',
+            'prefix'          => 'resque:',
+            'statistic_class' => 'Resque\Statistic'
         ), $options);
     }
 
@@ -236,32 +236,26 @@ class Resque implements LoggerAwareInterface
     }
 
     /**
+     * @param string $id Worker ID
+     * @return bool
+     */
+    public function workerExists($id)
+    {
+        return in_array($id, $this->getWorkerIds());
+    }
+
+    /**
      * Return an array of process IDs for all of the Resque workers currently
      * running on this machine.
      *
-     * It'd be nice and much easier to use pgrep. It's not available on MacOS.
+     * Expects pgrep to be in the path, and for it to inspect full argument
+     * lists using -f
      *
      * @return array Array of Resque worker process IDs.
      */
     public function getWorkerPids()
     {
-        $ps = $this->options['ps'];
-        $ps_args = array_map(function ($v) {
-            return escapeshellarg($v);
-        }, $this->options['ps_args']);
-
-        $grep = $this->options['grep'];
-        $grep_args = array_map(function ($v) {
-            return escapeshellarg($v);
-        }, $this->options['grep_args']);
-
-        $command = sprintf(
-            '%s %s | %s %s',
-            escapeshellcmd($ps),
-            implode($ps_args, ' '),
-            escapeshellcmd($grep),
-            implode($grep_args, ' ')
-        );
+        $command = $this->options['pgrep'] . ' ' . escapeshellarg($this->options['pgrep_pattern']);
 
         $pids = array();
         $output = null;
