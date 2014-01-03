@@ -55,32 +55,6 @@ class JobTest extends Test
 		$this->resque->enqueue('jobs', 'Test_Job', $args);
 	}
 
-	public function testRecreatedJobMatchesExistingJob()
-	{
-		$args = array(
-			'int' => 123,
-			'numArray' => array(
-				1,
-				2,
-			),
-			'assocArray' => array(
-				'key1' => 'value1',
-				'key2' => 'value2'
-			),
-		);
-
-		$this->resque->enqueue('jobs', 'Test_Job', $args);
-		$job = Job::reserve('jobs');
-
-		// Now recreate it
-		$job->recreate();
-
-		$newJob = Job::reserve('jobs');
-		$this->assertEquals($job->payload['class'], $newJob->payload['class']);
-		$this->assertEquals($job->getArguments(), $newJob->getArguments());
-	}
-
-
 	public function testFailedJobExceptionsAreCaught()
 	{
 		$payload = array(
@@ -129,8 +103,6 @@ class JobTest extends Test
 		);
 		$job = new Job('jobs', $payload);
 		$job->perform();
-
-		$this->assertTrue(Test_Job_With_SetUp::$called);
 	}
 
 	public function testJobWithTearDownCallbackFiresTearDown()
@@ -144,21 +116,5 @@ class JobTest extends Test
 		);
 		$job = new Job('jobs', $payload);
 		$job->perform();
-
-		$this->assertTrue(Test_Job_With_TearDown::$called);
-	}
-
-	public function testJobWithNamespace()
-	{
-	    Resque_Redis::prefix('php');
-	    $queue = 'jobs';
-	    $payload = array('another_value');
-        $this->resque->enqueue($queue, 'Test_Job_With_TearDown', $payload);
-
-        $this->assertEquals(Resque::queues(), array('jobs'));
-        $this->assertEquals(Resque::size($queue), 1);
-
-        Resque_Redis::prefix('resque');
-        $this->assertEquals(Resque::size($queue), 0);
 	}
 }

@@ -5,6 +5,7 @@ namespace Resque\Job;
 use Predis\Client;
 use Resque\Log;
 use Resque\Resque;
+use Resque\Test;
 use Resque\TestCase;
 use Resque\Worker;
 
@@ -15,10 +16,10 @@ use Resque\Worker;
  * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class StatusTest extends \PHPUnit_Framework_TestCase
+class StatusTest extends Test
 {
     /**
-     * @var \Resque_Worker
+     * @var Worker
      */
     protected $worker;
 
@@ -42,61 +43,63 @@ class StatusTest extends \PHPUnit_Framework_TestCase
 
 	public function testJobStatusCanBeTracked()
 	{
-		$token = Resque::enqueue('jobs', 'Test_Job', null, true);
+		$token = $this->resque->enqueue('jobs', 'Test_Job', null, true);
 		$status = new Status($token, $this->getMock('Resque\Resque'));
 		$this->assertTrue($status->isTracking());
 	}
 
 	public function testJobStatusIsReturnedViaJobInstance()
 	{
-		$token = Resque::enqueue('jobs', 'Test_Job', null, true);
-		$job = Resque_Job::reserve('jobs');
+		$token = $this->resque->enqueue('jobs', 'Test_Job', null, true);
+
+        $worker = new Worker($this->resque, 'jobs');
+        $job = $worker->reserve();
+
 		$this->assertEquals(Status::STATUS_WAITING, $job->getStatus());
 	}
 
 	public function testQueuedJobReturnsQueuedStatus()
 	{
-		$token = Resque::enqueue('jobs', 'Test_Job', null, true);
-		$status = new Status($token);
+		$token = $this->resque->enqueue('jobs', 'Test_Job', null, true);
+		$status = new Status($token, $this->resque);
 		$this->assertEquals(Status::STATUS_WAITING, $status->get());
 	}
 
 	public function testRunningJobReturnsRunningStatus()
 	{
-		$token = Resque::enqueue('jobs', 'Failing_Job', null, true);
+		$token = $this->resque->enqueue('jobs', 'Failing_Job', null, true);
 		$job = $this->worker->reserve();
 		$this->worker->workingOn($job);
-		$status = new Status($token);
+		$status = new Status($token, $this->resque);
 		$this->assertEquals(Status::STATUS_RUNNING, $status->get());
 	}
 
 	public function testFailedJobReturnsFailedStatus()
 	{
-		$token = Resque::enqueue('jobs', 'Failing_Job', null, true);
+		$token = $this->resque->enqueue('jobs', 'Failing_Job', null, true);
 		$this->worker->work(0);
-		$status = new Status($token);
+		$status = new Status($token, $this->resque);
 		$this->assertEquals(Status::STATUS_FAILED, $status->get());
 	}
 
 	public function testCompletedJobReturnsCompletedStatus()
 	{
-		$token = Resque::enqueue('jobs', 'Test_Job', null, true);
+		$token = $this->resque->enqueue('jobs', 'Test_Job', null, true);
 		$this->worker->work(0);
-		$status = new Status($token);
+		$status = new Status($token, $this->resque);
 		$this->assertEquals(Status::STATUS_COMPLETE, $status->get());
 	}
 
 	public function testStatusIsNotTrackedWhenToldNotTo()
 	{
-		$token = Resque::enqueue('jobs', 'Test_Job', null, false);
-		$status = new Status($token);
+		$token = $this->resque->enqueue('jobs', 'Test_Job', null, false);
+		$status = new Status($token, $this->resque);
 		$this->assertFalse($status->isTracking());
 	}
 
 	public function testStatusTrackingCanBeStopped()
 	{
-		Status::create('test');
-		$status = new Status('test');
+		$status = new Status('test', $this->resque);
 		$this->assertEquals(Status::STATUS_WAITING, $status->get());
 		$status->stop();
 		$this->assertFalse($status->get());
@@ -104,7 +107,7 @@ class StatusTest extends \PHPUnit_Framework_TestCase
 
 	public function testRecreatedJobWithTrackingStillTracksStatus()
 	{
-		$originalToken = Resque::enqueue('jobs', 'Test_Job', null, true);
+		$originalToken = $this->resque->enqueue('jobs', 'Test_Job', null, true);
 		$job = $this->worker->reserve();
 
 		// Mark this job as being worked on to ensure that the new status is still
@@ -118,7 +121,7 @@ class StatusTest extends \PHPUnit_Framework_TestCase
 		$this->assertNotEquals($originalToken, $newToken);
 
 		// Now check the status of the new job
-		$newJob = Resque_Job::reserve('jobs');
+		$newJob = $this->worker->reserve();
 		$this->assertEquals(Status::STATUS_WAITING, $newJob->getStatus());
 	}
 }

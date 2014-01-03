@@ -32,7 +32,7 @@ class WorkerTest extends Test
 		}
 
 		// Now try to get them
-		$this->assertEquals($num, count(Resque_Worker::all()));
+		$this->assertEquals($num, count($this->resque->getWorkerIds()));
 	}
 
 	public function testGetWorkerById()
@@ -41,7 +41,9 @@ class WorkerTest extends Test
         $worker->setLogger(new Log());
 		$worker->register();
 
-		$newWorker = Worker::find((string)$worker);
+        $newWorker = new Worker($this->resque, '*');
+        $newWorker->setId((string)$worker);
+
 		$this->assertEquals((string)$worker, (string)$newWorker);
 	}
 
@@ -57,8 +59,8 @@ class WorkerTest extends Test
 		$worker->register();
 		$worker->unregister();
 
-		$this->assertFalse(Worker::exists((string)$worker));
-		$this->assertEquals(array(), Worker::all());
+		$this->assertFalse($this->resque->workerExists((string)$worker));
+		$this->assertEquals(array(), $this->resque->getWorkerIds());
 		$this->assertEquals(array(), $this->redis->smembers('resque:workers'));
 	}
 
@@ -78,7 +80,7 @@ class WorkerTest extends Test
 		$worker = new Worker($this->resque, '*');
 		$worker->setLogger(new Log());
 		$worker->pauseProcessing();
-		Resque::enqueue('jobs', 'Test_Job');
+		$this->resque->enqueue('jobs', 'Test_Job');
 		$worker->work(0);
 		$this->assertEquals(0, $worker->getStatistic('processed'));
 		$worker->unPauseProcessing();
@@ -223,12 +225,12 @@ class WorkerTest extends Test
 		$worker->setId($workerId[0].':2:high,low');
 		$worker->register();
 
-		$this->assertEquals(3, count(Resque_Worker::all()));
+		$this->assertEquals(3, count($this->resque->getWorkerIds()));
 
 		$goodWorker->pruneDeadWorkers();
 
 		// There should only be $goodWorker left now
-		$this->assertEquals(1, count(Resque_Worker::all()));
+		$this->assertEquals(1, count($this->resque->getWorkerIds()));
 	}
 
 	public function testDeadWorkerCleanUpDoesNotCleanUnknownWorkers()
@@ -246,12 +248,12 @@ class WorkerTest extends Test
 		$worker->setId('my.other.host:1:jobs');
 		$worker->register();
 
-		$this->assertEquals(2, count(Resque_Worker::all()));
+		$this->assertEquals(2, count($this->resque->getWorkerIds()));
 
 		$worker->pruneDeadWorkers();
 
 		// my.other.host should be left
-		$workers = Resque_Worker::all();
+		$workers = $this->resque->getWorkerIds();
 		$this->assertEquals(1, count($workers));
 		$this->assertEquals((string)$worker, (string)$workers[0]);
 	}
