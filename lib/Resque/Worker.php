@@ -23,7 +23,7 @@ use \RuntimeException;
  * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class Worker extends Configurable implements LoggerAwareInterface
+class Worker implements LoggerAwareInterface
 {
     /**
      * @var string String identifying this worker.
@@ -54,6 +54,8 @@ class Worker extends Configurable implements LoggerAwareInterface
      * @var Job Current job, if any, being processed by this worker.
      */
     protected $currentJob = null;
+
+    protected $options = array();
 
     /**
      * @var int Process ID of child worker processes.
@@ -96,7 +98,7 @@ class Worker extends Configurable implements LoggerAwareInterface
      */
     public function __construct(Resque $resque, $queues, array $options = array())
     {
-        parent::__construct($options);
+        $this->configure($options);
 
         $this->resque = $resque;
 
@@ -124,14 +126,12 @@ class Worker extends Configurable implements LoggerAwareInterface
      */
     protected function configure(array $options)
     {
-        $options = array_merge(array(
+        $this->options = array_merge(array(
             'server_name'      => null,
             'pid'              => null,
             'id_format'        => '%s:%d:%s',
             'id_location_preg' => '/^([^:]+?):([0-9]+):/',
-        ), $options);
-
-        parent::configure($options);
+        ), $this->options);
 
         if (!$this->options['server_name']) {
             $this->options['server_name'] = function_exists('gethostname') ? gethostname() : php_uname('n');
@@ -536,7 +536,7 @@ class Worker extends Configurable implements LoggerAwareInterface
      * server may have been killed and the Resque workers did not die gracefully
      * and therefore leave state information in Redis.
      */
-    protected function pruneDeadWorkers()
+    public function pruneDeadWorkers()
     {
         $pids = $this->resque->getWorkerPids();
         $ids  = $this->resque->getWorkerIds();
