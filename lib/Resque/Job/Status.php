@@ -160,16 +160,35 @@ class Status
      * Sets an attribute
      *
      * @param string $name
-     * @param mixed $value
+     * @param mixed  $value
      */
     public function setAttribute($name, $value)
     {
         if ($name == 'status') {
             $this->update($value);
         } else {
-            $this->attribute[$name] = $value;
+            $this->attributes[$name] = $value;
             $this->client->hmset($this->getHashKey(), $name, $value, 'updated', time());
         }
+    }
+
+    /**
+     * Increments an attribute
+     *
+     * The attribute should be an integer field
+     *
+     * @param string  $name
+     * @param integer $by
+     * @return integer The value after incrementing (see hincrby)
+     */
+    public function incrementAttribute($name, $by = 1)
+    {
+        $result = $this->client->pipeline(function ($redis) use ($name, $by) {
+            $redis->hincrby($this->getHashKey(), $name, $by);
+            $redis->hset($this->getHashKey(), 'updated', time());
+        });
+
+        return $this->attributes[$name] = $result[0];
     }
 
     /**
