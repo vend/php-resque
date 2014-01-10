@@ -4,10 +4,10 @@ namespace Resque;
 
 use \ArrayAccess;
 use \ArrayIterator;
+use \InvalidArgumentException;
 use \IteratorAggregate;
 use Resque\Failure;
 use Resque\Job\Status;
-use Resque\Job\DontPerformException;
 
 /**
  * Resque job.
@@ -16,29 +16,22 @@ use Resque\Job\DontPerformException;
  * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class Job implements ArrayAccess, IteratorAggregate
+abstract class AbstractJob implements ArrayAccess, IteratorAggregate, JobInterface
 {
     /**
      * @var string The name of the queue that this job belongs to.
      */
-    public $queue;
+    protected $queue;
 
     /**
-     * @todo Mark protected
      * @var Worker Instance of the Resque worker running this job.
      */
-    public $worker;
+    protected $worker;
 
     /**
-     * @todo Mark protected
      * @var array Containing details of the job.
      */
-    public $payload;
-
-    /**
-     * @var object Instance of the class performing work for this job.
-     */
-    private $instance;
+    protected $payload;
 
     /**
      * Instantiate a new instance of a job.
@@ -46,10 +39,18 @@ class Job implements ArrayAccess, IteratorAggregate
      * @param string $queue The queue that the job belongs to.
      * @param array $payload array containing details of the job.
      */
-    public function __construct($queue, $payload)
+    public function __construct($queue, array $payload)
     {
         $this->queue = $queue;
         $this->payload = $payload;
+    }
+
+    /**
+     * @param Worker $worker
+     */
+    public function setWorker(Worker $worker)
+    {
+        $this->worker = $worker;
     }
 
     /**
@@ -87,6 +88,7 @@ class Job implements ArrayAccess, IteratorAggregate
     /**
      * Gets a status instance for this job
      *
+     * @throws \InvalidArgumentException
      * @return \Resque\Job\Status
      */
     protected function getStatusInstance()
@@ -94,6 +96,7 @@ class Job implements ArrayAccess, IteratorAggregate
         if (!isset($this->payload['id'])) {
             throw new InvalidArgumentException('Cannot get status instance: payload has no ID');
         }
+
         return new Status($this->payload['id'], $this->worker->getResque());
     }
 
@@ -107,74 +110,23 @@ class Job implements ArrayAccess, IteratorAggregate
         if (!isset($this->payload['args'])) {
             return array();
         }
+
         return $this->payload['args'][0];
     }
 
     /**
-     * Get the instantiated object for this job that will be performing work.
-     *
-     * @return object Instance of the object that this job belongs to.
-     */
-    public function getInstance()
-    {
-        if (!is_null($this->instance)) {
-            return $this->instance;
-        }
-
-        if(!class_exists($this->payload['class'])) {
-            throw new Exception(
-                'Could not find job class ' . $this->payload['class'] . '.'
-            );
-        }
-
-        if(!method_exists($this->payload['class'], 'perform')) {
-            throw new Exception(
-                'Job class ' . $this->payload['class'] . ' does not contain a perform method.'
-            );
-        }
-
-        $this->instance = new $this->payload['class']();
-        $this->instance->job = $this;
-        $this->instance->args = $this->getArguments();
-        $this->instance->queue = $this->queue;
-        return $this->instance;
-    }
-
-    /**
-     * Actually execute a job by calling the perform method on the class
-     * associated with the job with the supplied arguments.
+     * Execute the job
      *
      * @return bool
-     * @throws Exception When the job's class could not be found or it does not contain a perform method.
      */
-    public function perform()
-    {
-        $instance = $this->getInstance();
-        try {
-            if (method_exists($instance, 'setUp')) {
-                $instance->setUp();
-            }
-
-            $instance->perform();
-
-            if (method_exists($instance, 'tearDown')) {
-                $instance->tearDown();
-            }
-        }
-        // beforePerform/setUp have said don't perform this job. Return.
-        catch(DontPerformException $e) {
-            return false;
-        }
-
-        return true;
-    }
+    abstract public function perform();
 
     /**
      * Mark the current job as having failed.
      *
      * @param $exception
      */
-    public function fail($exception)
+    protected function fail($exception)
     {
         $this->updateStatus(Status::STATUS_FAILED);
 
@@ -191,9 +143,10 @@ class Job implements ArrayAccess, IteratorAggregate
 
     /**
      * Re-queue the current job.
+     *
      * @return string
      */
-    public function recreate()
+    protected function recreate()
     {
         $status = $this->getStatusInstance();
         $tracking = $status->isTracking();

@@ -6,6 +6,7 @@ namespace Resque;
 use Psr\Log\LoggerAwareInterface;
 use Resque\Event;
 use Resque\Exception\Exception;
+use Resque\Exception\JobClassNotFoundException;
 use Resque\Job;
 use Resque\Job\DirtyExitException;
 use Resque\Job\Status;
@@ -80,7 +81,24 @@ class Worker implements LoggerAwareInterface
      */
     protected function createJobInstance($queue, $payload)
     {
-        throw new \LogicException('unimplemented');
+        if (!class_exists($this->payload['class'])) {
+            throw new JobClassNotFoundException(
+                'Could not find job class ' . $this->payload['class'] . '.'
+            );
+        }
+
+        if (!is_subclass_of($this->payload['class'], 'Resque\JobInterface')) {
+            $a = 1;
+        }
+
+
+        if (!method_exists($this->payload['class'], 'perform')) {
+            throw new Exception(
+                'Job class ' . $this->payload['class'] . ' does not contain a perform method.'
+            );
+        }
+
+        return new $payload['class']($queue, $payload);
     }
 
     /**
@@ -215,7 +233,9 @@ class Worker implements LoggerAwareInterface
      */
     public function log($message, $priority = LogLevel::INFO)
     {
-        $this->logger->log($message, $priority);
+        if ($this->logger) {
+            $this->logger->log($message, $priority);
+        }
     }
 
     /**
@@ -254,7 +274,7 @@ class Worker implements LoggerAwareInterface
             }
 
             if (!$job) {
-                // For an interval of 0, break now - helps with unit testing etc
+                // For an interval of 0, continue now - helps with unit testing etc
                 if ($interval == 0) {
                     break;
                 }

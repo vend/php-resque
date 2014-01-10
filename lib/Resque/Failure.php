@@ -30,6 +30,7 @@ class Failure
 	public static function create($payload, \Exception $exception, Worker $worker, $queue)
 	{
 		$backend = self::getBackend();
+
 		new $backend($payload, $exception, $worker, $queue);
 	}
 

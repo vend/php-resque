@@ -2,10 +2,11 @@
 
 namespace Resque;
 
+use Resque\Test\Job;
+
 /**
  * Resque_Worker tests.
  *
- * @package		Resque/Tests
  * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
@@ -69,10 +70,10 @@ class WorkerTest extends Test
 		$worker = new Worker($this->resque, '*');
 		$worker->setLogger(new Log());
 		$worker->pauseProcessing();
-		$this->resque->enqueue('jobs', 'Test_Job');
+		$this->resque->enqueue('jobs', 'Resque\Test\Job');
 		$worker->work(0);
 		$worker->work(0);
-		$this->assertEquals(0, $worker->getStatistic('processed'));
+		$this->assertEquals(0, $worker->getStatistic('processed')->get());
 	}
 
 	public function testResumedWorkerPicksUpJobs()
@@ -80,12 +81,12 @@ class WorkerTest extends Test
 		$worker = new Worker($this->resque, '*');
 		$worker->setLogger(new Log());
 		$worker->pauseProcessing();
-		$this->resque->enqueue('jobs', 'Test_Job');
+		$this->resque->enqueue('jobs', 'Resque\Test\Job');
 		$worker->work(0);
-		$this->assertEquals(0, $worker->getStatistic('processed'));
+		$this->assertEquals(0, $worker->getStatistic('processed')->get());
 		$worker->unPauseProcessing();
 		$worker->work(0);
-		$this->assertEquals(1, $worker->getStatistic('processed'));
+		$this->assertEquals(1, $worker->getStatistic('processed')->get());
 	}
 
 	public function testWorkerCanWorkOverMultipleQueues()
@@ -98,14 +99,14 @@ class WorkerTest extends Test
         $worker->setLogger(new Log());
 		$worker->register();
 
-        $this->resque->enqueue('queue1', 'Test_Job_1');
-		$this->resque->enqueue('queue2', 'Test_Job_2');
+        $this->resque->enqueue('queue1', 'Resque\Test\Job');
+		$this->resque->enqueue('queue2', 'Resque\Test\Job');
 
 		$job = $worker->reserve();
-		$this->assertEquals('queue1', $job->queue);
+		$this->assertEquals('queue1', $job->getQueue());
 
 		$job = $worker->reserve();
-		$this->assertEquals('queue2', $job->queue);
+		$this->assertEquals('queue2', $job->getQueue());
 	}
 
 	public function testWorkerWorksQueuesInSpecifiedOrder()
@@ -119,19 +120,19 @@ class WorkerTest extends Test
 		$worker->register();
 
 		// Queue the jobs in a different order
-		$this->resque->enqueue('low', 'Test_Job_1');
-        $this->resque->enqueue('high', 'Test_Job_2');
-        $this->resque->enqueue('medium', 'Test_Job_3');
+		$this->resque->enqueue('low', 'Resque\Test\Job');
+        $this->resque->enqueue('high', 'Resque\Test\Job');
+        $this->resque->enqueue('medium', 'Resque\Test\Job');
 
 		// Now check we get the jobs back in the right order
 		$job = $worker->reserve();
-		$this->assertEquals('high', $job->queue);
+		$this->assertEquals('high', $job->getQueue());
 
 		$job = $worker->reserve();
-		$this->assertEquals('medium', $job->queue);
+		$this->assertEquals('medium', $job->getQueue());
 
 		$job = $worker->reserve();
-		$this->assertEquals('low', $job->queue);
+		$this->assertEquals('low', $job->getQueue());
 	}
 
 	public function testWildcardQueueWorkerWorksAllQueues()
@@ -141,14 +142,14 @@ class WorkerTest extends Test
 		$worker->register();
 		
 
-		Resque::enqueue('queue1', 'Test_Job_1');
-		Resque::enqueue('queue2', 'Test_Job_2');
+		$this->resque->enqueue('queue1', 'Resque\Test\Job');
+		$this->resque->enqueue('queue2', 'Resque\Test\Job');
 
 		$job = $worker->reserve();
-		$this->assertEquals('queue1', $job->queue);
+		$this->assertEquals('queue1', $job->getQueue());
 
 		$job = $worker->reserve();
-		$this->assertEquals('queue2', $job->queue);
+		$this->assertEquals('queue2', $job->getQueue());
 	}
 
 	public function testWorkerDoesNotWorkOnUnknownQueues()
@@ -156,14 +157,14 @@ class WorkerTest extends Test
 		$worker = new Worker($this->resque, 'queue1');
         $worker->setLogger(new Log());
 		$worker->register();
-		Resque::enqueue('queue2', 'Test_Job');
+		$this->resque->enqueue('queue2', 'Resque\Test\Job');
 
 		$this->assertFalse($worker->reserve());
 	}
 
 	public function testWorkerClearsItsStatusWhenNotWorking()
 	{
-        $this->resque->enqueue('jobs', 'Test_Job');
+        $this->resque->enqueue('jobs', 'Resque\Test\Job');
 		$worker = new Worker($this->resque, 'jobs');
 		$worker->setLogger(new Log());
 		$job = $worker->reserve();
@@ -179,8 +180,9 @@ class WorkerTest extends Test
 		$worker->register();
 
 		$payload = array(
-			'class' => 'Test_Job'
+			'class' => 'Resque\Test\Job'
 		);
+
 		$job = new Job('jobs', $payload);
 		$worker->workingOn($job);
 
@@ -194,7 +196,7 @@ class WorkerTest extends Test
 
 	public function testWorkerErasesItsStatsWhenShutdown()
 	{
-        $this->resque->enqueue('jobs', 'Test_Job');
+        $this->resque->enqueue('jobs', 'Resque\Test\Job');
         $this->resque->enqueue('jobs', 'Invalid_Job');
 
 		$worker = new Worker($this->resque, 'jobs');
@@ -202,8 +204,8 @@ class WorkerTest extends Test
 		$worker->work(0);
 		$worker->work(0);
 
-		$this->assertEquals(0, $worker->getStatistic('processed'));
-		$this->assertEquals(0, $worker->getStatistic('failed'));
+		$this->assertEquals(0, $worker->getStatistic('processed')->get());
+		$this->assertEquals(0, $worker->getStatistic('failed')->get());
 	}
 
 	public function testWorkerCleansUpDeadWorkersOnStartup()
@@ -265,14 +267,14 @@ class WorkerTest extends Test
 		$worker->register();
 
 		$payload = array(
-			'class' => 'Test_Job'
+			'class' => 'Resque\Test\Job'
 		);
 		$job = new Job('jobs', $payload);
 
 		$worker->workingOn($job);
 		$worker->unregister();
 
-		$this->assertEquals(1, $worker->getStatistic('failed'));
+		$this->assertEquals(1, $worker->getStatistic('failed')->get());
 	}
 
     public function testBlockingListPop()
@@ -281,13 +283,13 @@ class WorkerTest extends Test
 		$worker->setLogger(new Log());
         $worker->register();
 
-        $this->resque->enqueue('jobs', 'Test_Job_1');
-        $this->resque->enqueue('jobs', 'Test_Job_2');
+        $this->resque->enqueue('jobs', 'Resque\Test\Job');
+        $this->resque->enqueue('jobs', 'Resque\Test\Job');
 
         $i = 1;
         while($job = $worker->reserve(true, 1))
         {
-            $this->assertEquals('Test_Job_' . $i, $job->payload['class']);
+            $this->assertEquals('Resque\Test\Job', $job->payload['class']);
 
             if($i == 2) {
                 break;
