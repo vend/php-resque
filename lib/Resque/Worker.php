@@ -3,14 +3,12 @@
 
 namespace Resque;
 
+use \Exception;
 use Psr\Log\LoggerAwareInterface;
-use Resque\Event;
-use Resque\Exception\Exception;
 use Resque\Exception\JobClassNotFoundException;
-use Resque\Job;
+use Resque\Exception\JobInvalidException;
 use Resque\Job\DirtyExitException;
 use Resque\Job\Status;
-use Resque\Util\Configurable;
 use Psr\Log\LogLevel;
 use Psr\Log\LoggerInterface;
 use \RuntimeException;
@@ -52,7 +50,7 @@ class Worker implements LoggerAwareInterface
     protected $paused = false;
 
     /**
-     * @var Job Current job, if any, being processed by this worker.
+     * @var JobInterface Current job, if any, being processed by this worker.
      */
     protected $currentJob = null;
 
@@ -68,38 +66,6 @@ class Worker implements LoggerAwareInterface
      */
     protected $resque;
 
-    protected function getClient()
-    {
-        return $this->resque->getClient();
-    }
-
-    /**
-     * @param $queue
-     * @param $payload
-     * @throws \LogicException
-     * @todo Get job name from payload
-     */
-    protected function createJobInstance($queue, $payload)
-    {
-        if (!class_exists($this->payload['class'])) {
-            throw new JobClassNotFoundException(
-                'Could not find job class ' . $this->payload['class'] . '.'
-            );
-        }
-
-        if (!is_subclass_of($this->payload['class'], 'Resque\JobInterface')) {
-            $a = 1;
-        }
-
-
-        if (!method_exists($this->payload['class'], 'perform')) {
-            throw new Exception(
-                'Job class ' . $this->payload['class'] . ' does not contain a perform method.'
-            );
-        }
-
-        return new $payload['class']($queue, $payload);
-    }
 
     /**
      * Instantiate a new worker, given a list of queues that it should be working
@@ -171,6 +137,42 @@ class Worker implements LoggerAwareInterface
             $this->options['pid'],
             implode(',', $this->queues)
         );
+    }
+
+    /**
+     * @return Client
+     */
+    protected function getClient()
+    {
+        return $this->resque->getClient();
+    }
+
+    /**
+     * @param string $queue
+     * @param array $payload
+     * @throws JobClassNotFoundException
+     * @throws JobInvalidException
+     * @return JobInterface
+     */
+    protected function createJobInstance($queue, array $payload)
+    {
+        if (!class_exists($payload['class'])) {
+            throw new JobClassNotFoundException(
+                'Could not find job class ' . $payload['class'] . '.'
+            );
+        }
+
+        if (!is_subclass_of($payload['class'], 'Resque\JobInterface')) {
+            throw new JobInvalidException();
+        }
+
+        $job = new $payload['class']($queue, $payload);
+
+        if (method_exists($job, 'setWorker')) {
+            $job->setWorker($this);
+        }
+
+        return $job;
     }
 
     /**
@@ -332,9 +334,9 @@ class Worker implements LoggerAwareInterface
     /**
      * Process a single job.
      *
-     * @param Job $job The job to be processed.
+     * @param JobInterface $job The job to be processed.
      */
-    public function perform(Job $job)
+    public function perform(JobInterface $job)
     {
         try {
             $job->perform();
@@ -461,7 +463,8 @@ class Worker implements LoggerAwareInterface
      */
     protected function registerSigHandlers()
     {
-        if(!function_exists('pcntl_signal')) {
+        if (!function_exists('pcntl_signal')) {
+            $this->logger->warning('Cannot register signal handlers');
             return;
         }
 
@@ -473,7 +476,8 @@ class Worker implements LoggerAwareInterface
         pcntl_signal(SIGUSR2, array($this, 'pauseProcessing'));
         pcntl_signal(SIGCONT, array($this, 'unPauseProcessing'));
         pcntl_signal(SIGPIPE, array($this, 'reestablishRedisConnection'));
-        $this->log('Registered signals', 'verbose');
+
+        $this->logger->notice('Registered signals');
     }
 
     /**

@@ -9,44 +9,68 @@ namespace Resque;
  * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class StatisticTest extends \PHPUnit_Framework_TestCase
+class StatisticTest extends Test
 {
+    /**
+     * @var Statistic
+     */
+    protected $statistic;
+
+    public function setUp()
+    {
+        parent::setUp();
+
+        $this->statistic = new Statistic($this->resque, __CLASS__);
+    }
+
+    public function tearDown()
+    {
+        $this->statistic->clear();
+        $this->statistic = null;
+    }
+
+    protected function assertStatisticValueByClient($value, $message = '')
+    {
+        $this->assertEquals($value, $this->redis->get('resque:stat:test'), $message);
+    }
+
 	public function testStatCanBeIncremented()
 	{
-		Statistic::incr('test_incr');
-		Statistic::incr('test_incr');
-		$this->assertEquals(2, $this->redis->get('resque:stat:test_incr'));
+        $this->statistic->incr();
+        $this->statistic->incr();
+        $this->assertStatisticValueByClient(2);
 	}
 
 	public function testStatCanBeIncrementedByX()
 	{
-		Statistic::incr('test_incrX', 10);
-		Statistic::incr('test_incrX', 11);
-		$this->assertEquals(21, $this->redis->get('resque:stat:test_incrX'));
+        $this->statistic->incr(10);
+        $this->statistic->incr(11);
+        $this->assertStatisticValueByClient(21);
 	}
 
 	public function testStatCanBeDecremented()
 	{
-		Statistic::incr('test_decr', 22);
-		Statistic::decr('test_decr');
-		$this->assertEquals(21, $this->redis->get('resque:stat:test_decr'));
+        $this->statistic->incr(22);
+        $this->statistic->decr();
+        $this->assertStatisticValueByClient(21);
 	}
 
 	public function testStatCanBeDecrementedByX()
-	{
-		Statistic::incr('test_decrX', 22);
-		Statistic::decr('test_decrX', 11);
-		$this->assertEquals(11, $this->redis->get('resque:stat:test_decrX'));
+    {
+        $this->statistic->incr(22);
+        $this->statistic->decr(11);
+        $this->assertStatisticValueByClient(11);
 	}
 
 	public function testGetStatByName()
 	{
-		Statistic::incr('test_get', 100);
-		$this->assertEquals(100, Statistic::get('test_get'));
+        $this->statistic->incr(100);
+		$this->assertEquals(100, $this->statistic->get());
 	}
 
 	public function testGetUnknownStatReturns0()
 	{
-		$this->assertEquals(0, Statistic::get('test_get_unknown'));
+        $statistic = new Statistic($this->resque, 'some_unknown_statistic');
+		$this->assertEquals(0, $statistic->get());
 	}
 }

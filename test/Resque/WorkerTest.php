@@ -289,7 +289,7 @@ class WorkerTest extends Test
         $i = 1;
         while($job = $worker->reserve(true, 1))
         {
-            $this->assertEquals('Resque\Test\Job', $job->payload['class']);
+            $this->assertEquals('Resque\Test\Job', $job['class']);
 
             if($i == 2) {
                 break;

@@ -33,4 +33,6 @@ interface Client
     public function smembers($key);
 
     public function flushdb($db = null);
+
+    public function establishConnection();
 }

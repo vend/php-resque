@@ -4,8 +4,10 @@ namespace Resque;
 
 use \ArrayAccess;
 use \ArrayIterator;
+use Exception;
 use \InvalidArgumentException;
 use \IteratorAggregate;
+use Resque\Exception\JobLogicException;
 use Resque\Failure;
 use Resque\Job\Status;
 
@@ -18,6 +20,11 @@ use Resque\Job\Status;
  */
 abstract class AbstractJob implements ArrayAccess, IteratorAggregate, JobInterface
 {
+    /**
+     * @var string The ID of the job
+     */
+    protected $id;
+
     /**
      * @var string The name of the queue that this job belongs to.
      */
@@ -43,6 +50,7 @@ abstract class AbstractJob implements ArrayAccess, IteratorAggregate, JobInterfa
     {
         $this->queue = $queue;
         $this->payload = $payload;
+        $this->id = isset($payload['id']) ? $payload['id'] : null;
     }
 
     /**
@@ -68,10 +76,6 @@ abstract class AbstractJob implements ArrayAccess, IteratorAggregate, JobInterfa
      */
     public function updateStatus($status)
     {
-        if (empty($this->payload['id'])) {
-            $this->worker->log('Unable to get job status: no ID in payload', 'warning');
-            return;
-        }
         $this->getStatusInstance()->update($status);
     }
 
@@ -93,11 +97,20 @@ abstract class AbstractJob implements ArrayAccess, IteratorAggregate, JobInterfa
      */
     protected function getStatusInstance()
     {
-        if (!isset($this->payload['id'])) {
+        if (!isset($this->id)) {
             throw new InvalidArgumentException('Cannot get status instance: payload has no ID');
         }
 
-        return new Status($this->payload['id'], $this->worker->getResque());
+        if (!$this->worker) {
+            throw new JobLogicException('Job has no worker: cannot get status');
+        }
+
+        return new Status($this->id, $this->worker->getResque());
+    }
+
+    public function getId()
+    {
+
     }
 
     /**
@@ -122,11 +135,11 @@ abstract class AbstractJob implements ArrayAccess, IteratorAggregate, JobInterfa
     abstract public function perform();
 
     /**
-     * Mark the current job as having failed.
+     * Mark this job as having failed.
      *
      * @param $exception
      */
-    protected function fail($exception)
+    public function fail(Exception $exception)
     {
         $this->updateStatus(Status::STATUS_FAILED);
 
@@ -177,8 +190,8 @@ abstract class AbstractJob implements ArrayAccess, IteratorAggregate, JobInterfa
             'Job{' . $this->queue .'}'
         );
 
-        if(!empty($this->payload['id'])) {
-            $name[] = 'ID: ' . $this->payload['id'];
+        if(!empty($this->id)) {
+            $name[] = 'ID: ' . $this->id;
         }
 
         $name[] = $this->payload['class'];
