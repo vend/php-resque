@@ -31,7 +31,7 @@ class StatisticTest extends Test
 
     protected function assertStatisticValueByClient($value, $message = '')
     {
-        $this->assertEquals($value, $this->redis->get('resque:stat:test'), $message);
+        $this->assertEquals($value, $this->redis->get('resque:stat:' . __CLASS__), $message);
     }
 
 	public function testStatCanBeIncremented()
