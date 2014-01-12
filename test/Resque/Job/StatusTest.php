@@ -73,6 +73,7 @@ class StatusTest extends Test
 
     public function testFailedJobReturnsFailedStatus()
     {
+        $this->resque->clearQueue('jobs');
         $token = $this->resque->enqueue('jobs', 'Resque\Test\FailingJob', null, true);
         $this->worker->work(0);
         $status = new Status($token, $this->resque);
@@ -81,6 +82,7 @@ class StatusTest extends Test
 
     public function testCompletedJobReturnsCompletedStatus()
     {
+        $this->resque->clearQueue('jobs');
         $token = $this->resque->enqueue('jobs', 'Resque\Test\Job', null, true);
         $this->worker->work(0);
         $status = new Status($token, $this->resque);
@@ -107,6 +109,8 @@ class StatusTest extends Test
     public function testRecreatedJobWithTrackingStillTracksStatus()
     {
         $originalToken = $this->resque->enqueue('jobs', 'Resque\Test\Job', null, true);
+
+        /* @var $job Job */
         $job = $this->worker->reserve();
 
         // Mark this job as being worked on to ensure that the new status is still
@@ -122,6 +126,6 @@ class StatusTest extends Test
         // Now check the status of the new job
         /* @var $newJob Resque\Test\Job */
         $newJob = $this->worker->reserve();
-        $this->assertEquals(Status::STATUS_WAITING, $newJob->getStatus());
+        $this->assertEquals(Status::STATUS_WAITING, $newJob->getStatus()->get());
     }
 }

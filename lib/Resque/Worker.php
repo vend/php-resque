@@ -338,6 +338,12 @@ class Worker implements LoggerAwareInterface
             return;
         }
 
+        try {
+            $this->resque->getStatusFactory()->forJob($job)->update(Status::STATUS_COMPLETE);
+        } catch (JobIdException $e) {
+            $this->logger->warning('Could not mark job complete: no ID in payload - {exception}', array('exception' => $e));
+        }
+
         $this->logger->notice('Finished job {queue}/{class} (ID: {id})', array(
             'queue' => $job->getQueue(),
             'class' => get_class($job),

@@ -26,7 +26,7 @@ class Job extends AbstractJob
      */
     public function recreate()
     {
-        parent::recreate();
+        return parent::recreate();
     }
 
     /**

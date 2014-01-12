@@ -8,4 +8,14 @@ class ResqueTest extends Test
     {
         $this->assertFalse($this->resque->workerExists('blah'));
     }
+
+    public function testEmptyWorkerIds()
+    {
+        $this->assertEquals(array(), $this->resque->getWorkerIds());
+    }
+
+    public function testEmptyWorkerPids()
+    {
+        $this->assertEquals(array(), $this->resque->getWorkerPids());
+    }
 }

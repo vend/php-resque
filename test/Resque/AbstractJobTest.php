@@ -67,7 +67,8 @@ class AbstractJobTest extends Test
 
         $job = new FailingJob('jobs', array(
             'class' => 'Resque\Test\FailingJob',
-            'args'  => null
+            'args'  => null,
+            'id'    => 'failing_test_job'
         ));
         $job->setResque($this->resque);
 
