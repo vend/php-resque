@@ -11,11 +11,11 @@ class ResqueTest extends Test
 
     public function testEmptyWorkerIds()
     {
-        $this->assertEquals(array(), $this->resque->getWorkerIds());
+        $this->assertInternalType('array', $this->resque->getWorkerIds());
     }
 
     public function testEmptyWorkerPids()
     {
-        $this->assertEquals(array(), $this->resque->getWorkerPids());
+        $this->assertInternalType('array', $this->resque->getWorkerPids());
     }
 }

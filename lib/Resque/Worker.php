@@ -267,7 +267,7 @@ class Worker implements LoggerAwareInterface
             if (!$job) {
                 // For an interval of 0, continue now - helps with unit testing etc
                 if ($interval == 0) {
-                    break;
+                    return;
                 }
 
                 // If no job was found, we sleep for $interval before continuing and checking again

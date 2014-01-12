@@ -69,10 +69,11 @@ class WorkerTest extends Test
         $worker->pauseProcessing();
         $this->resque->enqueue('jobs', 'Resque\Test\Job');
         $worker->work(0);
-        $this->assertEquals(0, $worker->getStatistic('processed')->get());
+        $this->assertEquals(0, $a = $worker->getStatistic('processed')->get());
         $worker->unPauseProcessing();
         $worker->work(0);
-        $this->assertEquals(1, $worker->getStatistic('processed')->get());
+        $worker->getStatistic('processed')->get();
+        $this->assertEquals(1, $b = $worker->getStatistic('processed')->get());
     }
 
     public function testWorkerCanWorkOverMultipleQueues()
@@ -87,26 +88,6 @@ class WorkerTest extends Test
 
         $job = $worker->reserve();
         $this->assertEquals('queue2', $job->getQueue());
-    }
-
-    public function testWorkerWorksQueuesInSpecifiedOrder()
-    {
-        $worker = $this->getWorker(array('high', 'medium', 'low'));
-
-        // Queue the jobs in a different order
-        $this->resque->enqueue('low', 'Resque\Test\Job');
-        $this->resque->enqueue('high', 'Resque\Test\Job');
-        $this->resque->enqueue('medium', 'Resque\Test\Job');
-
-        // Now check we get the jobs back in the right order
-        $job = $worker->reserve();
-        $this->assertEquals('high', $job->getQueue());
-
-        $job = $worker->reserve();
-        $this->assertEquals('medium', $job->getQueue());
-
-        $job = $worker->reserve();
-        $this->assertEquals('low', $job->getQueue());
     }
 
     public function testWildcardQueueWorkerWorksAllQueues()

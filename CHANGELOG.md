@@ -31,6 +31,23 @@ The mostly private API of the previous versions has been opened up
 considerably, meaning more opportunity for extending classes. At Vend, we use
 this to send jobs to an FPM pool of workers, rather than forking for every job.
 
+#### Worker shuffles queues
+
+The worker shuffles the queues it will dequeue from on every pass of the main loop.
+This means each queue a worker runs has an equal chance to be dequeued from. (The
+previous behaviour was to work the queues in the order specified).
+
+#### Statistic object wraps main value
+
+Gone is the static `Statistic::get/set` API. A Statistic object now wraps the counter
+value, which can be retrieved via `$statistic->get()`.
+
+#### Job implementation made more flexible
+
+Jobs now only need implement JobInterface. They can optionally do this by extending
+AbstractJob. Job instances are directly created by the Worker, rather than being attached
+to a tightly-coupled concrete Job implementation.
+
 ## chrisboulton/php-resque
 
 ### 1.3 (2013-??-??) ##
