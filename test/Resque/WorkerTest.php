@@ -147,7 +147,8 @@ class WorkerTest extends Test
         $worker = $this->getWorker('jobs');
 
 		$payload = array(
-			'class' => 'Resque\Test\Job'
+			'class' => 'Resque\Test\Job',
+            'id'    => 'test'
 		);
 
 		$job = new Job('jobs', $payload);
@@ -164,11 +165,12 @@ class WorkerTest extends Test
 	public function testWorkerErasesItsStatsWhenShutdown()
 	{
         $this->resque->enqueue('jobs', 'Resque\Test\Job');
-        $this->resque->enqueue('jobs', 'Resque\Test\NoPerformJob');
+        $this->resque->enqueue('jobs', 'Resque\Test\FailingJob');
 
         $worker = $this->getWorker('jobs');
 
 		$worker->work(0);
+        $worker->shutdown();
 		$worker->work(0);
 
 		$this->assertEquals(0, $worker->getStatistic('processed')->get());
@@ -231,14 +233,14 @@ class WorkerTest extends Test
 
 	public function testWorkerFailsUncompletedJobsOnExit()
 	{
-		$worker = new Worker($this->resque, 'jobs');
-        $worker->setLogger($this->logger);
-		$worker->register();
+        $worker = $this->getWorker('jobs');
 
 		$payload = array(
-			'class' => 'Resque\Test\Job'
+			'class' => 'Resque\Test\Job',
+            'id'    => __METHOD__
 		);
 		$job = new Job('jobs', $payload);
+        $job->setResque($this->resque);
 
 		$worker->workingOn($job);
 		$worker->unregister();
