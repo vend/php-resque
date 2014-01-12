@@ -1,4 +1,4 @@
-## vend/php-resque
+## Forked version to add namespacing
 
 ### 2.0.0 ##
 
@@ -15,11 +15,26 @@ All resque code is loaded from the `Resque` namespace. This means a slight
 change in layout to support PSR-0 (given, for instance, `Resque` is now
 `Resque\Resque`)
 
-#### Backend dependency removed
+#### Backend coupling removed
 
-Credis dependencies removed: Resque is now free of dependencies on any Redis
-client library (i.e. you can use it with Predis, phpredis, redisent, etc.).
-Instead, you'll be expected to provide a Redis client object.
+Direct Credis coupling has been removed: Resque is now free of coupling to any Redis
+client library, meaning you can use it with Predis, Credis, redisent, etc.
+
+Instead of this library creating a Redis client instance for you, you'll be
+expected to provide a Redis client object to the Resque instance
+as a dependency. This helps eliminate global state, and means the library can
+be readily integrated into, for example, your existing Depedency Injection
+container or factory methods.
+
+For Credis clients, a lightweight wrapper is provided (this is chiefly used to
+implement a reconnect method). Predis clients can be
+used directly with no wrapping class. With these two main client types,
+support for phpiredis, phpredis
+and webdis is provided indirectly.
+
+You can use any client that implements the *methods* in Resque\Client\ClientInterface
+ - your client need not *actually* implement the interface (many Redis clients
+ use `__call()`).
 
 #### Protected API improvements and general SOLIDness
 

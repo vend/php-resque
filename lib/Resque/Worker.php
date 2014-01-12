@@ -365,7 +365,7 @@ class Worker implements LoggerAwareInterface
     {
         try {
             $status = $this->resque->getStatusFactory()->forJob($job);
-            $status->update(Status::STATUS_FAILED);
+            $success = $status->update(Status::STATUS_FAILED);
         } catch (JobIdException $e) {
             $this->logger->warning($e);
         }
@@ -537,7 +537,12 @@ class Worker implements LoggerAwareInterface
     public function reestablishRedisConnection()
     {
         $this->logger->notice('SIGPIPE received; attempting to reconnect');
-        $this->resque->getClient()->establishConnection();
+        $client = $this->resque->getClient();
+
+        if ($client->isConnected()) {
+            $client->disconnect();
+        }
+        $client->connect();
     }
 
     /**

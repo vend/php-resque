@@ -53,8 +53,10 @@ class Settings implements LoggerAwareInterface
         );
 
         foreach ($env as $var => $setting) {
-            if (isset($_ENV[$var])) {
-                $this->$setting = $_ENV[$var];
+            $name = 'RESQUE_' . strtoupper($var);
+
+            if (isset($_SERVER[$name])) {
+                $this->$setting = $_SERVER[$name];
             }
         }
     }
@@ -109,7 +111,7 @@ class Settings implements LoggerAwareInterface
                     'prefix' => $this->prefix
                 ));
             case 'credis':
-                return new \Credis_Client($this->host, $this->port);
+                return new \Resque\Client\CredisClient($this->host, $this->port);
             default:
                 throw new \InvalidArgumentException('Invalid or unknown client type: ' . $this->clientType);
         }

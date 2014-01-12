@@ -2,7 +2,7 @@
     "_-x-vim-formatting": " vim: set ft=javascript ts=4 sw=4 et : ",
 
     "name":        "vend/resque",
-    "description": "Originally PSR port of chrisbolton/php-resque, supports Predis, more DI",
+    "description": "Namespaced port of chrisbolton/php-resque, supports Predis, more DI",
     "license":     "MIT",
 
     "authors": [
@@ -23,18 +23,18 @@
     },
 
     "bin": [
-        "bin/resque"
+        "resque"
     ],
 
     "require": {
         "php":                ">=5.3.7",
         "ext-pcntl":          "*",
         "psr/log":            "1.0.0",
-        "symfony/command":    "*"
+        "symfony/console":    "2.4.*"
     },
 
     "require-dev": {
-        "colinmollenhour/credis": "1.2.*",
+        "colinmollenhour/credis": "1.3.*",
         "predis/predis":          "0.8.*",
         "phpunit/phpunit":        "3.7.*",
         "monolog/monolog":        "1.7.*"

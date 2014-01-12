@@ -142,18 +142,16 @@ class Status
     {
         $this->attributes = array_merge($this->attributes, $attributes);
 
-        $args = array($this->getHashKey());
-
+        $set = array();
         foreach ($attributes as $name => $value) {
             if ($name == 'status') {
                 $this->update($value);
                 continue;
             }
-            $args[] = $name;
-            $args[] = $value;
+            $set[$name] = $value;
         }
 
-        call_user_func_array(array($this->client, 'hmset'), $args);
+        return call_user_func(array($this->client, 'hmset'), $this->getHashKey(), $set);
     }
 
     /**
@@ -168,7 +166,10 @@ class Status
             $this->update($value);
         } else {
             $this->attributes[$name] = $value;
-            $this->client->hmset($this->getHashKey(), $name, $value, 'updated', time());
+            $this->client->hmset($this->getHashKey(), array(
+                $name     => $value,
+                'updated' => time()
+            ));
         }
     }
 
@@ -211,8 +212,13 @@ class Status
             return;
         }
 
-        $this->attribute['status'] = $status;
-        $this->client->hmset($this->getHashKey(), 'status', $status, 'updated', time());
+        $this->attributes['status'] = $status;
+        $this->attributes['updated'] = time();
+
+        $success = $this->client->hmset($this->getHashKey(), array(
+            'status'  => $this->attributes['status'],
+            'updated' => $this->attributes['updated']
+        ));
 
         // Expire the status for completed jobs after 24 hours
         if (in_array($status, self::$complete)) {
@@ -220,6 +226,8 @@ class Status
         } else {
             $this->client->expire($this->getHashKey(), self::INCOMPLETE_TTL);
         }
+
+        return $success;
     }
 
     /**
@@ -308,8 +316,10 @@ class Status
             return isset($this->attributes[$name]) ? $this->attributes[$name] : $default;
         }
 
-        $value = $this->client->hget($this->getHashKey(), $name);
-        return $value !== null ? $value : $default;
+        // Could be just hget, but Credis will return false?!
+        $key = $this->getHashKey();
+        $attributes = $this->client->hGetAll($this->getHashKey());
+        return isset($attributes[$name]) ? $attributes[$name] : $default;
     }
 
     /**

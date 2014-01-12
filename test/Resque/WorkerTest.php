@@ -249,9 +249,7 @@ class WorkerTest extends Test
 
     public function testBlockingListPop()
     {
-        $worker = new Worker($this->resque, 'jobs');
-        $worker->setLogger($this->logger);
-        $worker->register();
+        $worker = $this->getWorker('jobs');
 
         $this->resque->enqueue('jobs', 'Resque\Test\Job');
         $this->resque->enqueue('jobs', 'Resque\Test\Job');
@@ -269,5 +267,11 @@ class WorkerTest extends Test
         }
 
         $this->assertEquals(2, $i);
+    }
+
+    public function testReestablishRedisConnection()
+    {
+        $worker = $this->getWorker('jobs');
+        $worker->reestablishRedisConnection();
     }
 }
