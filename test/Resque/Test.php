@@ -2,6 +2,7 @@
 
 namespace Resque;
 
+use Psr\Log\LoggerInterface;
 use Resque\Test\Settings;
 
 abstract class Test extends \PHPUnit_Framework_TestCase
@@ -21,6 +22,14 @@ abstract class Test extends \PHPUnit_Framework_TestCase
      */
     protected $redis;
 
+    /**
+     * @var LoggerInterface
+     */
+    protected $logger;
+
+    /**
+     * @param Settings $settings
+     */
     public static function setSettings(Settings $settings)
     {
         self::$settings = $settings;
@@ -35,11 +44,23 @@ abstract class Test extends \PHPUnit_Framework_TestCase
         $this->redis = self::$settings->getClient();
         $this->redis->flushdb();
 
+        $this->logger = self::$settings->getLogger();
+
         $this->resque = new Resque($this->redis);
+        $this->resque->setLogger($this->logger);
     }
 
     public function tearDown()
     {
         $this->redis->flushdb();
+    }
+
+    protected function getWorker($queues)
+    {
+        $worker = new Worker($this->resque, $queues);
+        $worker->setLogger($this->logger);
+        $worker->register();
+
+        return $worker;
     }
 }

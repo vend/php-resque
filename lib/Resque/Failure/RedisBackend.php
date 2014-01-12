@@ -2,7 +2,7 @@
 
 namespace Resque\Failure;
 
-use Resque\Exception\Exception;
+use \Exception;
 use Resque\Worker;
 use \stdClass;
 
@@ -13,7 +13,7 @@ use \stdClass;
  * @author		Chris Boulton <chris@bigcommerce.com>
  * @license		http://www.opensource.org/licenses/mit-license.php
  */
-class Redis implements FailureBackend
+class RedisBackend implements BackendInterface
 {
     /**
      * Initialize a failed job class and save it (where appropriate).
@@ -23,7 +23,7 @@ class Redis implements FailureBackend
      * @param Worker $worker Instance of Worker that received the job.
      * @param string $queue The name of the queue the job was fetched from.
      */
-    public function __construct($payload, $exception, $worker, $queue)
+    public function receiveFailure($payload, Exception $exception, Worker $worker, $queue)
     {
         $data = new stdClass;
         $data->failed_at = strftime('%a %b %d %H:%M:%S %Z %Y');

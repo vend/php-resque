@@ -27,13 +27,9 @@ class StatusTest extends Test
 	{
 		parent::setUp();
 
-        $client = new Client();
-
-		$this->resque = new Resque($client);
-
         // Register a worker to test with
         $this->worker = new Worker($this->resque, 'jobs');
-        $this->worker->setLogger(new Log());
+        $this->worker->setLogger($this->logger);
 	}
 
 	public function testConstructor()
@@ -56,7 +52,7 @@ class StatusTest extends Test
         $worker = new Worker($this->resque, 'jobs');
         $job = $worker->reserve();
 
-		$this->assertEquals(Status::STATUS_WAITING, $job->getStatus());
+		$this->assertEquals(Status::STATUS_WAITING, $job->getStatusCode());
 	}
 
 	public function testQueuedJobReturnsQueuedStatus()
@@ -68,7 +64,7 @@ class StatusTest extends Test
 
 	public function testRunningJobReturnsRunningStatus()
 	{
-		$token = $this->resque->enqueue('jobs', 'Failing_Job', null, true);
+		$token = $this->resque->enqueue('jobs', 'Resque\Test\FailingJob', null, true);
 		$job = $this->worker->reserve();
 		$this->worker->workingOn($job);
 		$status = new Status($token, $this->resque);
@@ -77,7 +73,7 @@ class StatusTest extends Test
 
 	public function testFailedJobReturnsFailedStatus()
 	{
-		$token = $this->resque->enqueue('jobs', 'Failing_Job', null, true);
+		$token = $this->resque->enqueue('jobs', 'Resque\Test\FailingJob', null, true);
 		$this->worker->work(0);
 		$status = new Status($token, $this->resque);
 		$this->assertEquals(Status::STATUS_FAILED, $status->get());
@@ -124,6 +120,7 @@ class StatusTest extends Test
 		$this->assertNotEquals($originalToken, $newToken);
 
 		// Now check the status of the new job
+        /* @var $newJob Resque\Test\Job */
 		$newJob = $this->worker->reserve();
 		$this->assertEquals(Status::STATUS_WAITING, $newJob->getStatus());
 	}

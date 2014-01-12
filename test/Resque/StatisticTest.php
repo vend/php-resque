@@ -25,8 +25,12 @@ class StatisticTest extends Test
 
     public function tearDown()
     {
-        $this->statistic->clear();
-        $this->statistic = null;
+        if ($this->statistic) {
+            $this->statistic->clear();
+            $this->statistic = null;
+        }
+
+        parent::tearDown();
     }
 
     protected function assertStatisticValueByClient($value, $message = '')

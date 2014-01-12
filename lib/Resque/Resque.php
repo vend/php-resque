@@ -5,12 +5,15 @@ namespace Resque;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+use Psr\Log\NullLogger;
 use Resque\Exception;
+use Resque\Failure\BackendInterface;
+use Resque\Failure\RedisBackend;
 use Resque\Job;
 use Resque\Job\Status;
-use Resque\Util\Log;
 
 use \InvalidArgumentException;
+use Resque\Job\StatusFactory;
 
 /**
  * Base Resque class
@@ -19,11 +22,6 @@ use \InvalidArgumentException;
  */
 class Resque implements LoggerAwareInterface
 {
-    /**
-     * @var string
-     */
-    const VERSION = '2.0';
-
     /**#@+
      * Protocol keys
      *
@@ -48,6 +46,16 @@ class Resque implements LoggerAwareInterface
      * @var LoggerInterface
      */
     protected $logger;
+
+    /**
+     * @var BackendInterface
+     */
+    protected $failures;
+
+    /**
+     * @var StatusFactory
+     */
+    protected $statuses;
 
     /**
      * Constructor
@@ -86,6 +94,46 @@ class Resque implements LoggerAwareInterface
     public function getClient()
     {
         return $this->client;
+    }
+
+    /**
+     * @param \Resque\Failure\BackendInterface $backend
+     */
+    public function setFailureBackend(BackendInterface $backend)
+    {
+        $this->failures = $backend;
+    }
+
+    /**
+     * @return BackendInterface
+     */
+    public function getFailureBackend()
+    {
+        if (!isset($this->failures)) {
+            $this->failures = new RedisBackend();
+        }
+
+        return $this->failures;
+    }
+
+    /**
+     * @param StatusFactory $factory
+     */
+    public function setStatusFactory(StatusFactory $factory)
+    {
+        $this->statuses = $factory;
+    }
+
+    /**
+     * @return StatusFactory
+     */
+    public function getStatusFactory()
+    {
+        if (!isset($this->statuses)) {
+            $this->statuses = new StatusFactory($this);
+        }
+
+        return $this->statuses;
     }
 
     /**
@@ -281,7 +329,6 @@ class Resque implements LoggerAwareInterface
         return $pids;
     }
 
-
     /**
      * Gets a statistic
      *
@@ -300,5 +347,17 @@ class Resque implements LoggerAwareInterface
     public function setLogger(LoggerInterface $logger)
     {
         $this->logger = $logger;
+    }
+
+    /**
+     * @return LoggerInterface
+     */
+    public function getLogger()
+    {
+        if (!$this->logger) {
+            $this->logger = new NullLogger();
+        }
+
+        return $this->logger;
     }
 }

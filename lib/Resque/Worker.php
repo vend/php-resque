@@ -5,9 +5,10 @@ namespace Resque;
 
 use \Exception;
 use Psr\Log\LoggerAwareInterface;
+use Resque\Exception\DirtyExitException;
 use Resque\Exception\JobClassNotFoundException;
+use Resque\Exception\JobIdException;
 use Resque\Exception\JobInvalidException;
-use Resque\Job\DirtyExitException;
 use Resque\Job\Status;
 use Psr\Log\LogLevel;
 use Psr\Log\LoggerInterface;
@@ -66,7 +67,6 @@ class Worker implements LoggerAwareInterface
      */
     protected $resque;
 
-
     /**
      * Instantiate a new worker, given a list of queues that it should be working
      * on. The list of queues should be supplied in the priority that they should
@@ -85,6 +85,7 @@ class Worker implements LoggerAwareInterface
         $this->configure($options);
 
         $this->resque = $resque;
+        $this->logger = $this->resque->getLogger();
 
         if (!is_array($queues)) {
             $queues = array($queues);
@@ -113,6 +114,8 @@ class Worker implements LoggerAwareInterface
         $this->options = array_merge(array(
             'server_name'      => null,
             'pid'              => null,
+            'ps'               => '/bin/ps',
+            'ps_args'          => array('-o', 'pid,state', '-p'),
             'id_format'        => '%s:%d:%s',
             'id_location_preg' => '/^([^:]+?):([0-9]+):/',
         ), $this->options);
@@ -168,8 +171,8 @@ class Worker implements LoggerAwareInterface
 
         $job = new $payload['class']($queue, $payload);
 
-        if (method_exists($job, 'setWorker')) {
-            $job->setWorker($this);
+        if (method_exists($job, 'setResque')) {
+            $job->setResque($this->resque);
         }
 
         return $job;
@@ -228,19 +231,6 @@ class Worker implements LoggerAwareInterface
     }
 
     /**
-     * Logs a message
-     *
-     * @param string $message
-     * @param string $priority
-     */
-    public function log($message, $priority = LogLevel::INFO)
-    {
-        if ($this->logger) {
-            $this->logger->log($message, $priority);
-        }
-    }
-
-    /**
      * Given a worker ID, check if it is registered/valid.
      *
      * @param string $id ID of the worker.
@@ -292,16 +282,16 @@ class Worker implements LoggerAwareInterface
                 continue;
             }
 
-            $this->log('got ' . $job);
+            $this->logger->info('got {job}', array('job' => $job));
             $this->workingOn($job);
 
             $this->child = $this->fork();
 
             // Forked and we're the child. Run the job.
             if ($this->child === 0 || $this->child === false) {
-                $status = 'Processing ' . $job->queue . ' since ' . strftime('%F %T');
+                $status = 'Processing ' . $job->getQueue() . ' since ' . strftime('%F %T');
                 $this->updateProcLine($status);
-                $this->log($status, 'verbose');
+                $this->logger->notice($status);
                 $this->perform($job);
                 if ($this->child === 0) {
                     exit(0);
@@ -312,13 +302,13 @@ class Worker implements LoggerAwareInterface
                 // Parent process, sit and wait
                 $status = 'Forked ' . $this->child . ' at ' . strftime('%F %T');
                 $this->updateProcLine($status);
-                $this->log($status, 'verbose');
+                $this->logger->info($status);
 
                 // Wait until the child process finishes before continuing
                 pcntl_wait($status);
                 $exitStatus = pcntl_wexitstatus($status);
                 if($exitStatus !== 0) {
-                    $job->fail(new DirtyExitException(
+                    $this->failJob($job, new DirtyExitException(
                         'Job exited with exit code ' . $exitStatus
                     ));
                 }
@@ -340,27 +330,63 @@ class Worker implements LoggerAwareInterface
     {
         try {
             $job->perform();
-        }
-        catch(Exception $e) {
-            $this->log($job . ' failed: ' . $e->getMessage());
-            $job->fail($e);
+        } catch(Exception $e) {
+            $this->logger->notice('{job} failed: {exception}', array(
+                'job'     => $job,
+                'exception' => $e
+            ));
+            $this->failJob($job, $e);
             return;
         }
 
-        $this->log('Done ' . $job, 'debug');
+        $this->logger->notice('Finished job {queue}/{class} (ID: {id})', array(
+            'queue' => $job->getQueue(),
+            'class' => get_class($job),
+            'id'    => isset($payload['id']) ? $payload['id'] : 'unknown'
+        ));
+
+        $this->logger->debug('Done with {job}', array('job' => $job));
+    }
+
+    /**
+     * Marks the given job as failed
+     *
+     * This happens whenever the job's perform() method emits an exception
+     *
+     * @param JobInterface $job
+     * @param Exception $exception
+     */
+    protected function failJob(JobInterface $job, Exception $exception)
+    {
+        try {
+            $status = $this->resque->getStatusFactory()->forJob($job);
+            $status->update(Status::STATUS_FAILED);
+        } catch (JobIdException $e) {
+            $this->logger->warning($e);
+        }
+
+        $this->resque->getFailureBackend()->receiveFailure(
+            $job->getPayload(),
+            $exception,
+            $this,
+            $job->getQueue()
+        );
+
+        $this->getResque()->getStatistic('failed')->incr();
+        $this->getStatistic('failed')->incr();
     }
 
     /**
      * Attempt to find a job from the top of one of the queues for this worker.
      *
-     * @return object|boolean Instance of Job if a job is found, false if not.
+     * @return JobInterface Instance of JobInterface if a job is found, null if not.
      */
     public function reserve()
     {
         $queues = $this->queues();
 
         if (!is_array($queues)) {
-            return false;
+            return null;
         }
 
         // Each call to reserve, we check the queues in a different order
@@ -375,12 +401,12 @@ class Worker implements LoggerAwareInterface
 
             $job = $this->createJobInstance($queue, $payload);
             if ($job) {
-                $this->log('Found job on ' . $queue, 'info');
+                $this->logger->info('Found job on {queue}', array('queue' => $queue));
                 return $job;
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
@@ -449,7 +475,7 @@ class Worker implements LoggerAwareInterface
     protected function updateProcLine($status)
     {
         if (function_exists('setproctitle')) {
-            setproctitle('resque-' . Resque::VERSION . ': ' . $status);
+            setproctitle('resque-' . Version::VERSION . ': ' . $status);
         }
     }
 
@@ -485,7 +511,7 @@ class Worker implements LoggerAwareInterface
      */
     public function pauseProcessing()
     {
-        $this->log('USR2 received; pausing job processing');
+        $this->logger->notice('USR2 received; pausing job processing');
         $this->paused = true;
     }
 
@@ -495,7 +521,7 @@ class Worker implements LoggerAwareInterface
      */
     public function unPauseProcessing()
     {
-        $this->log('CONT received; resuming job processing');
+        $this->logger->notice('CONT received; resuming job processing');
         $this->paused = false;
     }
 
@@ -505,7 +531,7 @@ class Worker implements LoggerAwareInterface
      */
     public function reestablishRedisConnection()
     {
-        $this->log('SIGPIPE received; attempting to reconnect');
+        $this->logger->notice('SIGPIPE received; attempting to reconnect');
         $this->resque->getClient()->establishConnection();
     }
 
@@ -516,7 +542,7 @@ class Worker implements LoggerAwareInterface
     public function shutdown()
     {
         $this->shutdown = true;
-        $this->log('Exiting...');
+        $this->logger->notice('Exiting...');
     }
 
     /**
@@ -535,19 +561,25 @@ class Worker implements LoggerAwareInterface
      */
     public function killChild()
     {
-        if(!$this->child) {
-            $this->log('No child to kill.', self::LOG_VERBOSE);
+        if (!$this->child) {
+            $this->logger->notice('No child to kill.');
             return;
         }
 
-        $this->log('Killing child at ' . $this->child, self::LOG_VERBOSE);
-        if(exec('ps -o pid,state -p ' . $this->child, $output, $returnCode) && $returnCode != 1) {
-            $this->log('Killing child at ' . $this->child, self::LOG_VERBOSE);
+        $this->logger->notice('Killing child at {pid}', array('pid' => $this->child));
+
+        $command = escapeshellcmd($this->options['ps']);
+
+        foreach ($this->options['ps_args'] as $arg) {
+            $command .= ' ' . escapeshellarg($arg);
+        }
+
+        if (exec('ps ' . $this->child, $output, $returnCode) && $returnCode != 1) {
+            $this->logger->notice('Killing child at ' . $this->child);
             posix_kill($this->child, SIGKILL);
             $this->child = null;
-        }
-        else {
-            $this->log('Child ' . $this->child . ' not found, restarting.', self::LOG_VERBOSE);
+        } else {
+            $this->logger->notice('Child ' . $this->child . ' not found, restarting.');
             $this->shutdown();
         }
     }
@@ -586,7 +618,7 @@ class Worker implements LoggerAwareInterface
                 continue;
             }
 
-            $this->log('Pruning dead worker: ' . $id, LogLevel::WARNING);
+            $this->logger->warning('Pruning dead worker: {id}', array('id' => $id));
             $worker->unregister();
         }
     }
@@ -613,8 +645,8 @@ class Worker implements LoggerAwareInterface
      */
     public function unregister()
     {
-        if (is_object($this->currentJob)) {
-            $this->currentJob->fail(new DirtyExitException());
+        if ($this->currentJob) {
+            $this->failJob($this->currentJob, new DirtyExitException());
         }
 
         $this->resque->getClient()->srem($this->resque->getKey(Resque::WORKERS_KEY), $this->getId());
@@ -629,19 +661,22 @@ class Worker implements LoggerAwareInterface
     /**
      * Tell Redis which job we're currently working on.
      *
-     * @param \Resque\Job $job Job instance containing the job we're working on.
+     * @param JobInterface $job Job instance we're working on.
      */
-    public function workingOn(Job $job)
+    public function workingOn(JobInterface $job)
     {
+        if (method_exists($job, 'setWorker')) {
+            $job->setWorker($this);
+        }
+
         $this->currentJob = $job;
 
-        $job->worker = $this;
-        $job->updateStatus(Status::STATUS_RUNNING);
+        $this->resque->getStatusFactory()->forJob($job)->update(Status::STATUS_RUNNING);
 
         $data = json_encode(array(
-            'queue' => $job->queue,
+            'queue' => $job->getQueue(),
             'run_at' => strftime('%a %b %d %H:%M:%S %Z %Y'),
-            'payload' => $job->payload
+            'payload' => $job->getPayload()
         ));
 
         $this->resque->getClient()->set($this->getJobKey(), $data);
@@ -700,7 +735,7 @@ class Worker implements LoggerAwareInterface
      * Get a statistic belonging to this worker.
      *
      * @param string $name Statistic to fetch.
-     * @return int Statistic value.
+     * @return Statistic
      */
     public function getStatistic($name)
     {

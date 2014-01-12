@@ -10,6 +10,7 @@ use \IteratorAggregate;
 use Resque\Exception\JobLogicException;
 use Resque\Failure;
 use Resque\Job\Status;
+use Resque\Resque;
 
 /**
  * Resque job.
@@ -31,9 +32,9 @@ abstract class AbstractJob implements ArrayAccess, IteratorAggregate, JobInterfa
     protected $queue;
 
     /**
-     * @var Worker Instance of the Resque worker running this job.
+     * @var Resque The instance of Resque this job belongs to.
      */
-    protected $worker;
+    protected $resque;
 
     /**
      * @var array Containing details of the job.
@@ -54,11 +55,11 @@ abstract class AbstractJob implements ArrayAccess, IteratorAggregate, JobInterfa
     }
 
     /**
-     * @param Worker $worker
+     * @param Resque $resque
      */
-    public function setWorker(Worker $worker)
+    public function setResque(Resque $resque)
     {
-        $this->worker = $worker;
+        $this->resque = $resque;
     }
 
     /**
@@ -70,61 +71,29 @@ abstract class AbstractJob implements ArrayAccess, IteratorAggregate, JobInterfa
     }
 
     /**
-     * Update the status of the current job.
-     *
-     * @param int $status Status constant from Resque\Job\Status indicating the current status of a job.
-     */
-    public function updateStatus($status)
-    {
-        $this->getStatusInstance()->update($status);
-    }
-
-    /**
-     * Return the status of the current job.
-     *
-     * @return int The status of the job as one of the Status constants.
-     */
-    public function getStatus()
-    {
-        return $this->getStatusInstance()->get();
-    }
-
-    /**
      * Gets a status instance for this job
      *
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
+     * @throws JobLogicException
      * @return \Resque\Job\Status
      */
-    protected function getStatusInstance()
+    protected function getStatus()
     {
-        if (!isset($this->id)) {
-            throw new InvalidArgumentException('Cannot get status instance: payload has no ID');
+        if (!$this->resque) {
+            throw new JobLogicException('Job has no Resque instance: cannot get status');
         }
 
-        if (!$this->worker) {
-            throw new JobLogicException('Job has no worker: cannot get status');
-        }
-
-        return new Status($this->id, $this->worker->getResque());
+        return $this->resque->getStatusFactory()->forJob($this);
     }
 
     public function getId()
     {
-
+        return $this->id;
     }
 
-    /**
-     * Get the arguments supplied to this job.
-     *
-     * @return array Array of arguments.
-     */
-    public function getArguments()
+    public function getPayload()
     {
-        if (!isset($this->payload['args'])) {
-            return array();
-        }
-
-        return $this->payload['args'][0];
+        return $this->payload;
     }
 
     /**
@@ -135,36 +104,16 @@ abstract class AbstractJob implements ArrayAccess, IteratorAggregate, JobInterfa
     abstract public function perform();
 
     /**
-     * Mark this job as having failed.
-     *
-     * @param $exception
-     */
-    public function fail(Exception $exception)
-    {
-        $this->updateStatus(Status::STATUS_FAILED);
-
-        Failure::create(
-            $this->payload,
-            $exception,
-            $this->worker,
-            $this->queue
-        );
-
-        $this->worker->getResque()->getStatistic('failed')->incr();
-        $this->worker->getStatistic('failed')->incr();
-    }
-
-    /**
      * Re-queue the current job.
      *
-     * @return string
+     * @return string ID of the recreated job
      */
     protected function recreate()
     {
-        $status = $this->getStatusInstance();
+        $status = $this->getStatus();
         $tracking = $status->isTracking();
 
-        $new = $this->worker->getResque()->enqueue(
+        $new = $this->resque->enqueue(
             $this->queue,
             $this->payload['class'],
             $this->payload['args'],
@@ -172,7 +121,7 @@ abstract class AbstractJob implements ArrayAccess, IteratorAggregate, JobInterfa
         );
 
         if ($tracking) {
-            $this->updateStatus(Status::STATUS_RECREATED);
+            $status->update(Status::STATUS_RECREATED);
             $status->setAttribute('recreated_as', $new);
         }
 

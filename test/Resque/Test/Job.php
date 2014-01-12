@@ -12,4 +12,28 @@ class Job extends AbstractJob
     {
         $this->performed = true;
     }
+
+    /**
+     * @return int See Resque\Job\Status::STATUS_*
+     */
+    public function getStatusCode()
+    {
+        return $this->getStatus()->get();
+    }
+
+    /**
+     * @return string ID of the recreated job
+     */
+    public function recreate()
+    {
+        parent::recreate();
+    }
+
+    /**
+     * @return \Resque\Job\Status
+     */
+    public function getStatus()
+    {
+        return parent::getStatus();
+    }
 }

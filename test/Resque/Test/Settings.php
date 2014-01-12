@@ -2,10 +2,12 @@
 
 namespace Resque\Test;
 
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LoggerInterface;
 use Resque\Client;
 use RuntimeException;
 
-class Settings
+class Settings implements LoggerAwareInterface
 {
     protected $clientType;
     protected $host;
@@ -14,6 +16,11 @@ class Settings
     protected $db;
     protected $prefix;
     protected $buildDir;
+
+    /**
+     * @var LoggerInterface
+     */
+    protected $logger;
 
     public function __construct()
     {
@@ -45,8 +52,7 @@ class Settings
             'prefix'      => 'prefix'
         );
 
-        foreach ($env as $var => $setting)
-        {
+        foreach ($env as $var => $setting) {
             if (isset($_ENV[$var])) {
                 $this->$setting = $_ENV[$var];
             }
@@ -64,6 +70,7 @@ class Settings
         $this->dumpRedisConfig();
         $this->registerShutdown();
 
+        $this->logger->notice('Starting redis server in {buildDir}', array('buildDir' => $this->buildDir));
         exec('cd ' . $this->buildDir . '; redis-server ' . $this->buildDir . '/redis.conf', $output, $return);
         usleep(500000);
 
@@ -75,14 +82,15 @@ class Settings
     protected function getRedisConfig()
     {
         return array(
-            "daemonize"  => "yes",
-            "pidfile"    => "./redis.pid",
-            "port"       => $this->port,
-            "bind"       => $this->bind,
-            "timeout"    => 300,
-            "dbfilename" => "dump.rdb",
-            "dir"        => $this->buildDir,
-            "loglevel"   => "debug",
+            'daemonize'  => 'yes',
+            'pidfile'    => './redis.pid',
+            'port'       => $this->port,
+            'bind'       => $this->bind,
+            'timeout'    => 300,
+            'dbfilename' => 'dump.rdb',
+            'dir'        => $this->buildDir,
+            'loglevel'   => 'debug',
+            'logfile'    => './redis.log'
         );
     }
 
@@ -120,14 +128,17 @@ class Settings
 
     protected function dumpRedisConfig()
     {
+        $file = $this->buildDir . '/redis.conf';
         $conf = '';
 
-        foreach ($this->getRedisConfig() as $name => $value)
-        {
+        foreach ($this->getRedisConfig() as $name => $value) {
             $conf .= "$name $value\n";
         }
 
-        file_put_contents($this->buildDir . '/redis.conf', $conf);
+        $this->logger->info('Dumping redis config to {file}', array('file' => $file));
+        $this->logger->debug($conf);
+
+        file_put_contents($file, $conf);
     }
 
     // Override INT and TERM signals, so they do a clean shutdown and also
@@ -136,18 +147,25 @@ class Settings
     {
         if (function_exists('pcntl_signal')) {
             pcntl_signal(SIGINT, function () {
+                $this->logger->debug('SIGINT received');
                 exit;
             });
 
             pcntl_signal(SIGTERM, function () {
+                $this->logger->debug('SIGTERM received');
                 exit;
             });
         }
     }
 
-    public function killRedis($pid = null)
+    public function killRedis()
     {
+        $pid = getmypid();
+
+        $this->logger->notice('Attempting to kill redis from {pid}', array('pid' => $pid));
+
         if ($pid === null || $this->testPid !== $pid) {
+            $this->logger->warning('Refusing to kill redis from forked worker');
             return; // don't kill from a forked worker
         }
 
@@ -171,6 +189,26 @@ class Settings
 
     protected function registerShutdown()
     {
-        register_shutdown_function(array($this, 'killRedis'), $this->testPid);
+        $this->logger->info('Registered shutdown function');
+        register_shutdown_function(array($this, 'killRedis'));
+    }
+
+    /**
+     * Sets a logger instance on the object
+     *
+     * @param LoggerInterface $logger
+     * @return null
+     */
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+    }
+
+    /**
+     * @return LoggerInterface
+     */
+    public function getLogger()
+    {
+        return $this->logger;
     }
 }

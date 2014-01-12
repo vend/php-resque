@@ -1,0 +1,33 @@
+#!/usr/bin/env php
+<?php
+
+use Resque\Console\ConsoleRunner;
+
+(@include_once __DIR__ . '/vendor/autoload.php') || @include_once __DIR__ . '/../../autoload.php';
+
+$directories = array(
+    getcwd(),
+    getcwd() . DIRECTORY_SEPARATOR . 'config'
+);
+
+$config = null;
+foreach ($directories as $directory) {
+    $config = $directory . DIRECTORY_SEPARATOR . 'cli-config.php';
+
+    if (file_exists($config)) {
+        break;
+    }
+}
+
+if (!file_exists($config)) {
+    echo "Resque expects cli-config.php configuration file in " . implode(' or ', $directories) . "\n";
+    exit(1);
+}
+
+if (!is_readable($config)) {
+    echo 'Configuration file [' . $config . '] does not have read permission.' . "\n";
+    exit(1);
+}
+
+$helperSet = require $config;
+ConsoleRunner::run($helperSet);

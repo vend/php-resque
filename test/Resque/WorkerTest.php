@@ -14,9 +14,7 @@ class WorkerTest extends Test
 {
 	public function testWorkerRegistersInList()
 	{
-		$worker = new Worker($this->resque, '*');
-		$worker->setLogger(new Log());
-		$worker->register();
+        $worker = $this->getWorker('*');
 
 		// Make sure the worker is in the list
 		$this->assertTrue((bool)$this->redis->sismember('resque:workers', (string)$worker));
@@ -27,9 +25,7 @@ class WorkerTest extends Test
 		$num = 3;
 		// Register a few workers
 		for($i = 0; $i < $num; ++$i) {
-			$worker = new Worker($this->resque, 'queue_' . $i);
-			$worker->setLogger(new Log());
-			$worker->register();
+            $worker = $this->getWorker('queue_' . $i);
 		}
 
 		// Now try to get them
@@ -38,9 +34,7 @@ class WorkerTest extends Test
 
 	public function testGetWorkerById()
 	{
-		$worker = new Worker($this->resque, '*');
-        $worker->setLogger(new Log());
-		$worker->register();
+        $worker = $this->getWorker('*');
 
         $newWorker = new Worker($this->resque, '*');
         $newWorker->setId((string)$worker);
@@ -48,16 +42,10 @@ class WorkerTest extends Test
 		$this->assertEquals((string)$worker, (string)$newWorker);
 	}
 
-	public function testInvalidWorkerDoesNotExist()
-	{
-		$this->assertFalse(Worker::exists('blah'));
-	}
 
 	public function testWorkerCanUnregister()
 	{
-		$worker = new Worker($this->resque, '*');
-        $worker->setLogger(new Log());
-		$worker->register();
+        $worker = $this->getWorker('*');
 		$worker->unregister();
 
 		$this->assertFalse($this->resque->workerExists((string)$worker));
@@ -67,8 +55,7 @@ class WorkerTest extends Test
 
 	public function testPausedWorkerDoesNotPickUpJobs()
 	{
-		$worker = new Worker($this->resque, '*');
-		$worker->setLogger(new Log());
+        $worker = $this->getWorker('*');
 		$worker->pauseProcessing();
 		$this->resque->enqueue('jobs', 'Resque\Test\Job');
 		$worker->work(0);
@@ -78,8 +65,7 @@ class WorkerTest extends Test
 
 	public function testResumedWorkerPicksUpJobs()
 	{
-		$worker = new Worker($this->resque, '*');
-		$worker->setLogger(new Log());
+		$worker = $this->getWorker('*');
 		$worker->pauseProcessing();
 		$this->resque->enqueue('jobs', 'Resque\Test\Job');
 		$worker->work(0);
@@ -91,13 +77,7 @@ class WorkerTest extends Test
 
 	public function testWorkerCanWorkOverMultipleQueues()
 	{
-		$worker = new Worker($this->resque, array(
-			'queue1',
-			'queue2'
-		));
-
-        $worker->setLogger(new Log());
-		$worker->register();
+        $worker = $this->getWorker(array('queue1', 'queue2'));
 
         $this->resque->enqueue('queue1', 'Resque\Test\Job');
 		$this->resque->enqueue('queue2', 'Resque\Test\Job');
@@ -111,13 +91,7 @@ class WorkerTest extends Test
 
 	public function testWorkerWorksQueuesInSpecifiedOrder()
 	{
-		$worker = new Worker($this->resque, array(
-			'high',
-			'medium',
-			'low'
-		));
-        $worker->setLogger(new Log());
-		$worker->register();
+        $worker = $this->getWorker(array('high', 'medium', 'low'));
 
 		// Queue the jobs in a different order
 		$this->resque->enqueue('low', 'Resque\Test\Job');
@@ -137,10 +111,7 @@ class WorkerTest extends Test
 
 	public function testWildcardQueueWorkerWorksAllQueues()
 	{
-		$worker = new Worker($this->resque, '*');
-        $worker->setLogger(new Log());
-		$worker->register();
-		
+        $worker = $this->getWorker('*');
 
 		$this->resque->enqueue('queue1', 'Resque\Test\Job');
 		$this->resque->enqueue('queue2', 'Resque\Test\Job');
@@ -154,9 +125,8 @@ class WorkerTest extends Test
 
 	public function testWorkerDoesNotWorkOnUnknownQueues()
 	{
-		$worker = new Worker($this->resque, 'queue1');
-        $worker->setLogger(new Log());
-		$worker->register();
+        $worker = $this->getWorker('queue1');
+
 		$this->resque->enqueue('queue2', 'Resque\Test\Job');
 
 		$this->assertFalse($worker->reserve());
@@ -165,8 +135,7 @@ class WorkerTest extends Test
 	public function testWorkerClearsItsStatusWhenNotWorking()
 	{
         $this->resque->enqueue('jobs', 'Resque\Test\Job');
-		$worker = new Worker($this->resque, 'jobs');
-		$worker->setLogger(new Log());
+        $worker = $this->getWorker('jobs');
 		$job = $worker->reserve();
 		$worker->workingOn($job);
 		$worker->doneWorking();
@@ -175,9 +144,7 @@ class WorkerTest extends Test
 
 	public function testWorkerRecordsWhatItIsWorkingOn()
 	{
-		$worker = new Worker($this->resque, 'jobs');
-        $worker->setLogger(new Log());
-		$worker->register();
+        $worker = $this->getWorker('jobs');
 
 		$payload = array(
 			'class' => 'Resque\Test\Job'
@@ -197,10 +164,10 @@ class WorkerTest extends Test
 	public function testWorkerErasesItsStatsWhenShutdown()
 	{
         $this->resque->enqueue('jobs', 'Resque\Test\Job');
-        $this->resque->enqueue('jobs', 'Invalid_Job');
+        $this->resque->enqueue('jobs', 'Resque\Test\NoPerformJob');
 
-		$worker = new Worker($this->resque, 'jobs');
-		$worker->setLogger(new Log());
+        $worker = $this->getWorker('jobs');
+
 		$worker->work(0);
 		$worker->work(0);
 
@@ -212,18 +179,20 @@ class WorkerTest extends Test
 	{
 		// Register a good worker
 		$goodWorker = new Worker($this->resque, 'jobs');
-        $goodWorker->setLogger(new Log());
+        $goodWorker->setLogger($this->logger);
 		$goodWorker->register();
+        $goodWorker = $this->getWorker('jobs');
+
 		$workerId = explode(':', $goodWorker);
 
 		// Register some bad workers
 		$worker = new Worker($this->resque, 'jobs');
-		$worker->setLogger(new Log());
+		$worker->setLogger($this->logger);
 		$worker->setId($workerId[0].':1:jobs');
 		$worker->register();
 
 		$worker = new Worker($this->resque, array('high', 'low'));
-		$worker->setLogger(new Log());
+		$worker->setLogger($this->logger);
 		$worker->setId($workerId[0].':2:high,low');
 		$worker->register();
 
@@ -239,14 +208,14 @@ class WorkerTest extends Test
 	{
 		// Register a bad worker on this machine
 		$worker = new Worker($this->resque, 'jobs');
-		$worker->setLogger(new Log());
+		$worker->setLogger($this->logger);
 		$workerId = explode(':', $worker);
 		$worker->setId($workerId[0].':1:jobs');
 		$worker->register();
 
 		// Register some other false workers
 		$worker = new Worker($this->resque, 'jobs');
-		$worker->setLogger(new Log());
+		$worker->setLogger($this->logger);
 		$worker->setId('my.other.host:1:jobs');
 		$worker->register();
 
@@ -263,7 +232,7 @@ class WorkerTest extends Test
 	public function testWorkerFailsUncompletedJobsOnExit()
 	{
 		$worker = new Worker($this->resque, 'jobs');
-        $worker->setLogger(new Log());
+        $worker->setLogger($this->logger);
 		$worker->register();
 
 		$payload = array(
@@ -280,7 +249,7 @@ class WorkerTest extends Test
     public function testBlockingListPop()
     {
         $worker = new Worker($this->resque, 'jobs');
-		$worker->setLogger(new Log());
+		$worker->setLogger($this->logger);
         $worker->register();
 
         $this->resque->enqueue('jobs', 'Resque\Test\Job');

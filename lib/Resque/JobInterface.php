@@ -28,23 +28,12 @@ interface JobInterface
     public function perform();
 
     /**
-     * @param Exception $e
-     * @return mixed
-     */
-    public function fail(Exception $e);
-
-    /**
      * @return string
      */
-    public function getId();
+    public function getQueue();
 
     /**
      * @return array
      */
-    public function getArguments();
-
-    /**
-     * @return string
-     */
-    public function getQueue();
+    public function getPayload();
 }

@@ -25,7 +25,7 @@ class AbstractJobTest extends Test
 
 		// Register a worker to test with
 		$this->worker = new Worker($this->resque, 'jobs');
-		$this->worker->setLogger(new Log());
+		$this->worker->setLogger($this->logger);
 		$this->worker->register();
 	}
 
@@ -64,26 +64,27 @@ class AbstractJobTest extends Test
 	public function testFailedJobExceptionsAreCaught()
 	{
 		$payload = array(
-			'class' => 'Failing_Job',
+			'class' => 'Resque\Test\FailingJob',
 			'args' => null
 		);
 		$job = new Job('jobs', $payload);
-		$job->setWorker($this->worker);
+		$job->setResque($this->resque);
 
 		$this->worker->perform($job);
 
-		$this->assertEquals(1, Statistic::get('failed'));
-		$this->assertEquals(1, Statistic::get('failed:'.$this->worker));
+        $failed = new Statistic($this->resque, 'failed');
+        $workerFailed = new Statistic($this->resque, 'failed:' . (string)$this->worker);
+        $this->assertEquals(1, $failed->get());
+        $this->assertEquals(1, $workerFailed->get());
 	}
 
 	/**
-	 * @expectedException Resque\Exception
+	 * @expectedException Resque\ResqueException
 	 */
 	public function testInvalidJobThrowsException()
 	{
 		$this->resque->enqueue('jobs', 'Resque\Test\NoPerformJob');
 		$job = $this->worker->reserve();
-		$job->worker = $this->worker;
 		$job->perform();
 	}
 }

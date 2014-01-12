@@ -35,4 +35,6 @@ interface Client
     public function flushdb($db = null);
 
     public function establishConnection();
+
+    public function srem($key, $value);
 }
