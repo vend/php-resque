@@ -56,6 +56,7 @@ abstract class Test extends \PHPUnit_Framework_TestCase
             $this->redis->flushdb();
 
             if ($this->redis->isConnected()) {
+                $this->logger->notice('Shutting down connected Redis instance in tearDown()');
                 $this->redis->disconnect();
             }
         }

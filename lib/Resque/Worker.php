@@ -255,7 +255,8 @@ class Worker implements LoggerAwareInterface
 
         while (true) {
             if ($this->shutdown) {
-                break;
+                $this->unregister();
+                return;
             }
 
             // Attempt to find and reserve a job
@@ -267,7 +268,7 @@ class Worker implements LoggerAwareInterface
             if (!$job) {
                 // For an interval of 0, continue now - helps with unit testing etc
                 if ($interval == 0) {
-                    return;
+                    break;
                 }
 
                 // If no job was found, we sleep for $interval before continuing and checking again
@@ -287,14 +288,12 @@ class Worker implements LoggerAwareInterface
             $this->child = $this->fork();
 
             // Forked and we're the child. Run the job.
-            if ($this->child === 0) {
+            if (!$this->child) {
                 $status = 'Processing ' . $job->getQueue() . ' since ' . strftime('%F %T');
                 $this->updateProcLine($status);
                 $this->logger->notice($status);
                 $this->perform($job);
-                if ($this->child === 0) {
-                    exit(0);
-                }
+                exit(0);
             } elseif ($this->child > 0) {
                 // Parent process, sit and wait
                 $status = 'Forked ' . $this->child . ' at ' . strftime('%F %T');
@@ -304,18 +303,19 @@ class Worker implements LoggerAwareInterface
                 // Wait until the child process finishes before continuing
                 pcntl_wait($status);
                 $exitStatus = pcntl_wexitstatus($status);
-                if($exitStatus !== 0) {
+
+                if ($exitStatus !== 0) {
                     $this->failJob($job, new DirtyExitException(
                         'Job exited with exit code ' . $exitStatus
                     ));
+                } else {
+                    $this->logger->debug('Job returned status code {code}', array('code' => $exitStatus));
                 }
             }
 
-            $this->child = null;
             $this->doneWorking();
+            $this->child = null;
         }
-
-        $this->unregister();
     }
 
     /**
@@ -449,10 +449,20 @@ class Worker implements LoggerAwareInterface
             throw new \Exception('pcntl not available, could not fork');
         }
 
+        // Immediately before a fork, disconnect the redis client
+        $this->resque->disconnect();
+
         $pid = pcntl_fork();
+
+        // And reconnect
+        $this->resque->connect();
 
         if ($pid === -1) {
             throw new RuntimeException('Unable to fork child worker.');
+        }
+
+        if (!is_numeric($pid)) {
+            throw new RuntimeException('Expected PID or zero from fork');
         }
 
         return $pid;
@@ -535,12 +545,7 @@ class Worker implements LoggerAwareInterface
     public function reestablishRedisConnection()
     {
         $this->logger->notice('SIGPIPE received; attempting to reconnect');
-        $client = $this->resque->getClient();
-
-        if ($client->isConnected()) {
-            $client->disconnect();
-        }
-        $client->connect();
+        $this->resque->reconnect();
     }
 
     /**

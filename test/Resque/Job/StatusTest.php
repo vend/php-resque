@@ -18,13 +18,21 @@ use Resque\Worker;
  */
 class StatusTest extends Test
 {
+    public function tearDown()
+    {
+        parent::tearDown();
+
+        $this->resque->clearQueue('jobs');
+    }
+
     public function testConstructor()
     {
-        $status = new Status(md5(time()), $this->resque);
+        $status = new Status(uniqid(__CLASS__, true), $this->resque);
     }
 
     public function testJobStatusCanBeTracked()
     {
+        $this->resque->clearQueue('jobs');
         $token = $this->resque->enqueue('jobs', 'Resque\Test\Job', null, true);
 
         $status = new Status($token, $this->resque);
@@ -33,12 +41,21 @@ class StatusTest extends Test
 
     public function testJobStatusIsReturnedViaJobInstance()
     {
+        $this->resque->clearQueue('jobs');
+
         $token = $this->resque->enqueue('jobs', 'Resque\Test\Job', null, true);
 
         $worker = $this->getWorker('jobs');
         $job = $worker->reserve();
 
-        $this->assertEquals(Status::STATUS_WAITING, $job->getStatusCode());
+        if (!$job) {
+            $this->fail('Could not get job');
+        }
+
+        $status = $this->resque->getStatusFactory()->forJob($job);
+        $status = $status->get();
+
+        $this->assertEquals(Status::STATUS_WAITING, $status);
     }
 
     public function testQueuedJobReturnsQueuedStatus()
@@ -57,6 +74,11 @@ class StatusTest extends Test
         $worker = $this->getWorker('jobs');
 
         $job = $worker->reserve();
+
+        if (!$job) {
+            $this->fail('Cannot get job');
+        }
+
         $worker->workingOn($job);
 
         $status = new Status($token, $this->resque);
@@ -65,6 +87,8 @@ class StatusTest extends Test
 
     public function testFailedJobReturnsFailedStatus()
     {
+        $pid = getmypid();
+
         $this->resque->clearQueue('jobs');
 
         $token = $this->resque->enqueue('jobs', 'Resque\Test\FailingJob', null, true);
@@ -74,8 +98,11 @@ class StatusTest extends Test
         $status = new Status($token, $this->resque);
         $before = $status->get();
 
+        $pid2 = getmypid();
+
         $worker->work(0);
 
+        $pid3 = getmypid();
         $status = new Status($token, $this->resque);
         $after = $status->get();
 
@@ -120,6 +147,10 @@ class StatusTest extends Test
         /* @var $job Job */
         $job = $worker->reserve();
 
+        if (!$job) {
+            $this->fail('Could not reserve job');
+        }
+
         // Mark this job as being worked on to ensure that the new status is still
         // waiting.
         $worker->workingOn($job);
@@ -133,6 +164,11 @@ class StatusTest extends Test
         // Now check the status of the new job
         /* @var $newJob Resque\Test\Job */
         $newJob = $worker->reserve();
+
+        if (!$newJob) {
+            $this->fail('Could not get newJob');
+        }
+
         $this->assertEquals(Status::STATUS_WAITING, $newJob->getStatus()->get());
     }
 }

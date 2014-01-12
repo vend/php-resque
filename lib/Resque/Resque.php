@@ -139,13 +139,30 @@ class Resque implements LoggerAwareInterface
     /**
      * Causes the client to reconnect to the Redis server
      *
-     * @throws \LogicException
      * @return void
-     * @todo Check client compatibility
      */
     public function reconnect()
     {
-        throw new \LogicException('Not implemented');
+        if ($this->client->isConnected()) {
+            $this->client->disconnect();
+        }
+        $this->client->connect();
+    }
+
+    /**
+     * Causes the client to connect to the Redis server
+     */
+    public function connect()
+    {
+        $this->client->connect();
+    }
+
+    /**
+     * Disconnects the client from the Redis server
+     */
+    public function disconnect()
+    {
+        $this->client->disconnect();
     }
 
     /**
