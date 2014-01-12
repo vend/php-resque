@@ -2,7 +2,6 @@
 <phpunit
 	bootstrap="test/bootstrap.php"
 	colors="true"
-    processIsolation="false"
 >
 	<testsuites>
 		<testsuite name="Resque Test Suite">

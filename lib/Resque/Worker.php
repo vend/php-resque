@@ -285,6 +285,7 @@ class Worker implements LoggerAwareInterface
             $this->logger->info('got {job}', array('job' => $job));
             $this->workingOn($job);
 
+            $this->child = null;
             $this->child = $this->fork();
 
             // Forked and we're the child. Run the job.
@@ -314,7 +315,6 @@ class Worker implements LoggerAwareInterface
             }
 
             $this->doneWorking();
-            $this->child = null;
         }
     }
 
@@ -451,6 +451,8 @@ class Worker implements LoggerAwareInterface
 
         // Immediately before a fork, disconnect the redis client
         $this->resque->disconnect();
+
+        $this->logger->notice('Forking...');
 
         $pid = pcntl_fork();
 

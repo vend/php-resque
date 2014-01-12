@@ -69,7 +69,7 @@ class StatusTest extends Test
     {
         $this->resque->clearQueue('jobs');
 
-        $token = $this->resque->enqueue('jobs', 'Resque\Test\FailingJob', null, true);
+        $token = $this->resque->enqueue('jobs', 'Resque\Test\Job', null, true);
 
         $worker = $this->getWorker('jobs');
 

@@ -192,6 +192,11 @@ class WorkerTest extends Test
         $worker->workingOn($job);
 
         $job = $worker->job();
+
+        if (!is_array($job)) {
+            $this->fail('Could not get job being worked on');
+        }
+
         $this->assertEquals('jobs', $job['queue']);
 
         if(!isset($job['run_at'])) {
@@ -319,10 +324,5 @@ class WorkerTest extends Test
     {
         $worker = $this->getWorker('jobs');
         $worker->reestablishRedisConnection();
-    }
-
-    public function testDisconnectRedisConnection()
-    {
-        $worker = $this->getWorker('jobs');
     }
 }
