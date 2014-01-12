@@ -79,11 +79,7 @@ class StatusTest extends Test
         $status = new Status($token, $this->resque);
         $after = $status->get();
 
-        $status = new Status($token, $this->resque);
-        $all = $status->getAll();
-        $after2 = $status->get();
-
-        $this->assertEquals(Status::STATUS_FAILED, $status->get());
+        $this->assertEquals(Status::STATUS_FAILED, $after);
     }
 
     public function testCompletedJobReturnsCompletedStatus()

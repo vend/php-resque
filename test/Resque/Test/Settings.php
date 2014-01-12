@@ -88,7 +88,7 @@ class Settings implements LoggerAwareInterface
             'pidfile'    => './redis.pid',
             'port'       => $this->port,
             'bind'       => $this->bind,
-            'timeout'    => 300,
+            'timeout'    => 0,
             'dbfilename' => 'dump.rdb',
             'dir'        => $this->buildDir,
             'loglevel'   => 'debug',
@@ -111,6 +111,7 @@ class Settings implements LoggerAwareInterface
                     'prefix' => $this->prefix
                 ));
             case 'credis':
+            case 'phpredis':
                 return new \Resque\Client\CredisClient($this->host, $this->port);
             default:
                 throw new \InvalidArgumentException('Invalid or unknown client type: ' . $this->clientType);

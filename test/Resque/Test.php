@@ -52,7 +52,13 @@ abstract class Test extends \PHPUnit_Framework_TestCase
 
     public function tearDown()
     {
-        $this->redis->flushdb();
+        if ($this->redis) {
+            $this->redis->flushdb();
+
+            if ($this->redis->isConnected()) {
+                $this->redis->disconnect();
+            }
+        }
     }
 
     protected function getWorker($queues)

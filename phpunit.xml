@@ -9,6 +9,4 @@
 			<directory>test</directory>
 		</testsuite>
 	</testsuites>
-
-
 </phpunit>

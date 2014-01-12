@@ -287,7 +287,7 @@ class Worker implements LoggerAwareInterface
             $this->child = $this->fork();
 
             // Forked and we're the child. Run the job.
-            if ($this->child === 0 || $this->child === false) {
+            if ($this->child === 0) {
                 $status = 'Processing ' . $job->getQueue() . ' since ' . strftime('%F %T');
                 $this->updateProcLine($status);
                 $this->logger->notice($status);
@@ -295,9 +295,7 @@ class Worker implements LoggerAwareInterface
                 if ($this->child === 0) {
                     exit(0);
                 }
-            }
-
-            if($this->child > 0) {
+            } elseif ($this->child > 0) {
                 // Parent process, sit and wait
                 $status = 'Forked ' . $this->child . ' at ' . strftime('%F %T');
                 $this->updateProcLine($status);

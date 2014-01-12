@@ -1,17 +1,67 @@
 <project name="php-resque" default="build">
-	<target name="clean">
-		<delete dir="${basedir}/build" />
-	</target>
-	<target name="prepare">
-		<mkdir dir="${basedir}/build" />
-		<mkdir dir="${basedir}/build/logs" />
-	</target>
-	<target name="phpunit">
-		<exec dir="${basedir}" executable="phpunit" failonerror="true">
-			<arg line="--log-junit         ${basedir}/build/logs/phpunit.xml
-				--coverage-clover ${basedir}/build/logs/clover.xml
-				--coverage-html   ${basedir}/build/coverage" />
-		</exec>
-	</target>
-	<target name="build" depends="clean,prepare,phpunit" />
+    <property name="build" location="${basedir}/build" />
+
+    <target name="clean">
+        <delete dir="${basedir}/build" />
+    </target>
+
+    <target name="prepare">
+        <mkdir dir="${basedir}/build" />
+    </target>
+
+    <target name="composer">
+        <exec dir="${basedir}" executable="composer.phar" failonerror="true">
+            <arg line="install" />
+        </exec>
+    </target>
+
+    <target name="phpunit">
+        <exec dir="${basedir}/bin" executable="phpunit" failonerror="true">
+            <arg value="--log-junit" />
+            <arg value="${basedir}/build/logs/phpunit.xml" />
+            <arg value="--coverage-clover" />
+            <arg value="${basedir}/build/logs/clover.xml" />
+            <arg value="--coverage-html" />
+            <arg value="${basedir}/build/coverage" />
+        </exec>
+    </target>
+
+    <target name="build" depends="clean,prepare,composer,phpunit" />
+
+    <target name="phpredis" depends="prepare">
+        <get src="https://github.com/nicolasff/phpredis/archive/master.zip" dest="${basedir}/build/phpredis.zip" verbose="true" />
+        <unzip src="${basedir}/build/phpredis.zip" dest="${basedir}/build" />
+        <exec dir="${basedir}/build/phpredis-master" executable="phpize" searchpath="true" failonerror="true" />
+        <exec dir="${basedir}/build/phpredis-master" executable="./configure" failonerror="true" />
+        <exec dir="${basedir}/build/phpredis-master" executable="make" failonerror="true" />
+        <exec dir="${basedir}/build/phpredis-master" executable="make" failonerror="true">
+            <arg value="install" />
+        </exec>
+    </target>
+
+    <target name="phpiredis" depends="prepare,hiredis">
+        <get src="https://github.com/nrk/phpiredis/archive/master.zip" usetimestamp="true" dest="${basedir}/build/phpiredis.zip" verbose="true" />
+        <unzip src="${basedir}/build/phpiredis.zip" dest="${basedir}/build" />
+
+        <exec dir="${basedir}/build/phpiredis-master" executable="phpize" searchpath="true" failonerror="true" />
+
+        <exec dir="${basedir}/build/phpiredis-master" executable="./configure" failonerror="true">
+            <arg value="--enable-phpiredis" />
+        </exec>
+
+        <exec dir="${basedir}/build/phpiredis-master" executable="make" failonerror="true" />
+        <exec dir="${basedir}/build/phpiredis-master" executable="make" failonerror="true">
+            <arg value="install" />
+        </exec>
+    </target>
+
+    <target name="hiredis" depends="prepare">
+        <get src="https://github.com/redis/hiredis/archive/master.zip" usetimestamp="true" dest="${basedir}/build/hiredis.zip" verbose="true" />
+        <unzip src="${basedir}/build/hiredis.zip" dest="${basedir}/build" />
+
+        <exec dir="${basedir}/build/hiredis-master" executable="make" failonerror="true" />
+        <exec dir="${basedir}/build/hiredis-master" executable="make" failonerror="true">
+            <arg value="install" />
+        </exec>
+    </target>
 </project>
