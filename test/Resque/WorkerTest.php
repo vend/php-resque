@@ -156,9 +156,11 @@ class WorkerTest extends Test
 
 		$job = $worker->job();
 		$this->assertEquals('jobs', $job['queue']);
+
 		if(!isset($job['run_at'])) {
 			$this->fail('Job does not have run_at time');
 		}
+
 		$this->assertEquals($payload, $job['payload']);
 	}
 

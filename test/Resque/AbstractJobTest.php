@@ -38,12 +38,11 @@ class AbstractJobTest extends Test
 	{
 		$this->resque->enqueue('jobs', 'Resque\Test\Job');
 
-        $worker = new Worker($this->resque, 'jobs');
-        $worker->reserve();
+        $worker = $this->getWorker('jobs');
 
 		$job = $worker->reserve('jobs');
 
-		if($job == false) {
+		if ($job == false) {
 			$this->fail('Job could not be reserved.');
 		}
 
