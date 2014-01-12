@@ -3,6 +3,7 @@
 namespace Resque;
 
 use Resque\Test;
+use Resque\Test\FailingJob;
 use Resque\Test\Job;
 
 /**
@@ -62,17 +63,19 @@ class AbstractJobTest extends Test
 
     public function testFailedJobExceptionsAreCaught()
     {
-        $payload = array(
+        $this->resque->clearQueue('jobs');
+
+        $job = new FailingJob('jobs', array(
             'class' => 'Resque\Test\FailingJob',
-            'args' => null
-        );
-        $job = new Job('jobs', $payload);
+            'args'  => null
+        ));
         $job->setResque($this->resque);
 
         $this->worker->perform($job);
 
         $failed = new Statistic($this->resque, 'failed');
         $workerFailed = new Statistic($this->resque, 'failed:' . (string)$this->worker);
+
         $this->assertEquals(1, $failed->get());
         $this->assertEquals(1, $workerFailed->get());
     }

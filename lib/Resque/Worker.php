@@ -10,7 +10,6 @@ use Resque\Exception\JobClassNotFoundException;
 use Resque\Exception\JobIdException;
 use Resque\Exception\JobInvalidException;
 use Resque\Job\Status;
-use Psr\Log\LogLevel;
 use Psr\Log\LoggerInterface;
 use \RuntimeException;
 
@@ -330,7 +329,7 @@ class Worker implements LoggerAwareInterface
     {
         try {
             $job->perform();
-        } catch(Exception $e) {
+        } catch (Exception $e) {
             $this->logger->notice('{job} failed: {exception}', array(
                 'job'     => $job,
                 'exception' => $e

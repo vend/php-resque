@@ -206,6 +206,16 @@ class Resque implements LoggerAwareInterface
     }
 
     /**
+     * Clears the whole of a queue
+     *
+     * @param string $queue
+     */
+    public function clearQueue($queue)
+    {
+        $this->getClient()->del($this->getKey(self::QUEUE_KEY . $queue));
+    }
+
+    /**
      * Return the size (number of pending jobs) of the specified queue.
      *
      * @param $queue name of the queue to be checked for pending jobs

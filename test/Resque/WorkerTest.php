@@ -175,6 +175,8 @@ class WorkerTest extends Test
         $worker->shutdown();
         $worker->work(0);
 
+        $this->resque->clearQueue('jobs');
+
         $this->assertEquals(0, $worker->getStatistic('processed')->get());
         $this->assertEquals(0, $worker->getStatistic('failed')->get());
     }
