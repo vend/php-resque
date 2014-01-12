@@ -87,7 +87,7 @@ class Status
     protected $attributes = array();
 
     /**
-     * @var \Resque\Client
+     * @var \Resque\ClientInterface
      */
     protected $client;
 

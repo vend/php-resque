@@ -4,7 +4,7 @@ namespace Resque\Test;
 
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
-use Resque\Client;
+use Resque\ClientInterface;
 use RuntimeException;
 
 class Settings implements LoggerAwareInterface
@@ -95,7 +95,7 @@ class Settings implements LoggerAwareInterface
     }
 
     /**
-     * @return Client
+     * @return ClientInterface
      * @throws \InvalidArgumentException
      */
     public function getClient()

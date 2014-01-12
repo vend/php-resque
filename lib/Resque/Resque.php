@@ -33,7 +33,7 @@ class Resque implements LoggerAwareInterface
     /**#@-*/
 
     /**
-     * @var \Resque\Client
+     * @var \Resque\ClientInterface
      */
     private $client;
 
@@ -89,7 +89,7 @@ class Resque implements LoggerAwareInterface
      * The Redis client can be any object that implements a suitable subset
      * of Redis commands.
      *
-     * @return \Resque\Client
+     * @return \Resque\ClientInterface
      */
     public function getClient()
     {

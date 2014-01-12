@@ -78,30 +78,40 @@ class WorkerTest extends Test
 
     public function testWorkerCanWorkOverMultipleQueues()
     {
-        $worker = $this->getWorker(array('queue1', 'queue2'));
+        $queues = array(
+            'queue1',
+            'queue2'
+        );
 
-        $this->resque->enqueue('queue1', 'Resque\Test\Job');
-        $this->resque->enqueue('queue2', 'Resque\Test\Job');
+        $worker = $this->getWorker($queues);
+
+        $this->resque->enqueue($queues[0], 'Resque\Test\Job');
+        $this->resque->enqueue($queues[1], 'Resque\Test\Job');
 
         $job = $worker->reserve();
-        $this->assertEquals('queue1', $job->getQueue());
+        $this->assertTrue(in_array($job->getQueue(), $queues), 'Job from valid queues');
 
         $job = $worker->reserve();
-        $this->assertEquals('queue2', $job->getQueue());
+        $this->assertTrue(in_array($job->getQueue(), $queues), 'Job from valid queues');
     }
 
     public function testWildcardQueueWorkerWorksAllQueues()
     {
+        $queues = array(
+            'queue1',
+            'queue2'
+        );
+
         $worker = $this->getWorker('*');
 
-        $this->resque->enqueue('queue1', 'Resque\Test\Job');
-        $this->resque->enqueue('queue2', 'Resque\Test\Job');
+        $this->resque->enqueue($queues[0], 'Resque\Test\Job');
+        $this->resque->enqueue($queues[1], 'Resque\Test\Job');
 
         $job = $worker->reserve();
-        $this->assertEquals('queue1', $job->getQueue());
+        $this->assertTrue(in_array($job->getQueue(), $queues), 'Job from valid queues');
 
         $job = $worker->reserve();
-        $this->assertEquals('queue2', $job->getQueue());
+        $this->assertTrue(in_array($job->getQueue(), $queues), 'Job from valid queues');
     }
 
     public function testWorkerDoesNotWorkOnUnknownQueues()
@@ -110,7 +120,7 @@ class WorkerTest extends Test
 
         $this->resque->enqueue('queue2', 'Resque\Test\Job');
 
-        $this->assertFalse($worker->reserve());
+        $this->assertNull($worker->reserve());
     }
 
     public function testWorkerClearsItsStatusWhenNotWorking()
@@ -218,19 +228,23 @@ class WorkerTest extends Test
 
     public function testWorkerFailsUncompletedJobsOnExit()
     {
+        $backend = $this->getMockForAbstractClass('Resque\Failure\BackendInterface');
+
+        $backend->expects($this->once())
+            ->method('receiveFailure');
+
+        $this->resque->setFailureBackend($backend);
+
         $worker = $this->getWorker('jobs');
 
-        $payload = array(
+        $job = new Job('jobs', array(
             'class' => 'Resque\Test\Job',
             'id'    => __METHOD__
-        );
-        $job = new Job('jobs', $payload);
+        ));
         $job->setResque($this->resque);
 
         $worker->workingOn($job);
         $worker->unregister();
-
-        $this->assertEquals(1, $worker->getStatistic('failed')->get());
     }
 
     public function testBlockingListPop()

@@ -15,7 +15,7 @@ namespace Resque;
  *  - Predis\Client
  *  - Credis
  */
-interface Client
+interface ClientInterface
 {
     public function get($key);
     public function set($key, $value);
