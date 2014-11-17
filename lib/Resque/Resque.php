@@ -340,7 +340,7 @@ class Resque implements LoggerAwareInterface
 
         if ($return !== 0) {
             $this->logger->warning('Unable to determine worker PIDs');
-            return false;
+            return array();
         }
 
         foreach ($output as $line) {
