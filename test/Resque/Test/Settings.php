@@ -112,7 +112,9 @@ class Settings implements LoggerAwareInterface
                 ));
             case 'credis':
             case 'phpredis':
-                return new \Resque\Client\CredisClient($this->host, $this->port);
+                $client = new \Resque\Client\CredisClient($this->host, $this->port);
+                $client->setCloseOnDestruct(false);
+                return $client;
             default:
                 throw new \InvalidArgumentException('Invalid or unknown client type: ' . $this->clientType);
         }

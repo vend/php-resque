@@ -294,6 +294,7 @@ class Worker implements LoggerAwareInterface
                 $this->updateProcLine($status);
                 $this->logger->notice($status);
                 $this->perform($job);
+
                 exit(0);
             } elseif ($this->child > 0) {
                 // Parent process, sit and wait

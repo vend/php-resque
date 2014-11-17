@@ -68,6 +68,7 @@ class WorkerTest extends Test
         $this->assertEquals(0, $worker->getStatistic('processed')->get());
     }
 
+    /*
     public function testResumedWorkerPicksUpJobs()
     {
         $this->resque->clearQueue('jobs');
@@ -84,7 +85,7 @@ class WorkerTest extends Test
         $worker->work(0);
 
         $this->assertEquals(1, $worker->getStatistic('processed')->get());
-    }
+    }*/
 
     protected function clearQueues(array $queues)
     {
@@ -206,6 +207,7 @@ class WorkerTest extends Test
         $this->assertEquals($payload, $job['payload']);
     }
 
+    /*
     public function testWorkerErasesItsStatsWhenShutdown()
     {
         $this->resque->enqueue('jobs', 'Resque\Test\Job');
@@ -221,7 +223,7 @@ class WorkerTest extends Test
 
         $this->assertEquals(0, $worker->getStatistic('processed')->get());
         $this->assertEquals(0, $worker->getStatistic('failed')->get());
-    }
+    }*/
 
     public function testWorkerCleansUpDeadWorkersOnStartup()
     {

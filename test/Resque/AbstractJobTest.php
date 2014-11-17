@@ -4,7 +4,6 @@ namespace Resque;
 
 use Resque\Test;
 use Resque\Test\FailingJob;
-use Resque\Test\Job;
 
 /**
  * Job tests.
@@ -82,7 +81,7 @@ class AbstractJobTest extends Test
     }
 
     /**
-     * @expectedException Resque\ResqueException
+     * @expectedException \Resque\ResqueException
      */
     public function testInvalidJobThrowsException()
     {
