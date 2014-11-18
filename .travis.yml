@@ -12,14 +12,14 @@ env:
   - RESQUE_CLIENT_TYPE=phpiredis
 
 before_script:
-  - sh -c "if [ $RESQUE_CLIENT_TYPE == 'phpredis' ]; then ant phpredis; fi"
-  - sh -c "if [ $RESQUE_CLIENT_TYPE == 'phpredis' ]; then echo \"extension=redis.so\" >> `php --ini | grep \"Loaded Configuration\" | sed -e \"s|.*:\s*||\"`; fi"
-  - sh -c "if [ $RESQUE_CLIENT_TYPE == 'phpiredis' ]; then ant phpiredis; fi"
-  - sh -c "if [ $RESQUE_CLIENT_TYPE == 'phpiredis' ]; then echo \"extension=phpiredis.so\" >> `php --ini | grep \"Loaded Configuration\" | sed -e \"s|.*:\s*||\"`; fi"
+  - sh -c "if [ \"$RESQUE_CLIENT_TYPE\" = 'phpredis' ]; then ant phpredis; fi"
+  - sh -c "if [ \"$RESQUE_CLIENT_TYPE\" = 'phpredis' ]; then echo 'extension=redis.so' >> `php --ini | grep 'Loaded Configuration' | sed -e \"s|.*:\s*||\"`; fi"
+  - sh -c "if [ \"$RESQUE_CLIENT_TYPE\" = 'phpiredis' ]; then ant phpiredis; fi"
+  - sh -c "if [ \"$RESQUE_CLIENT_TYPE\" = 'phpiredis' ]; then echo 'extension=phpiredis.so' >> `php --ini | grep 'Loaded Configuration' | sed -e \"s|.*:\s*||\"`; fi"
   - composer install
 
 script: phpunit --coverage-clover=coverage.clover
 
 after_script:
-  - sh -c "if [ $TRAVIS_PHP_VERSION == '5.5' ]; then wget https://scrutinizer-ci.com/ocular.phar; fi"
-  - sh -c "if [ $TRAVIS_PHP_VERSION == '5.5' ]; then php ocular.phar code-coverage:upload --format=php-clover coverage.clover; fi"
+  - sh -c "if [ \"$RESQUE_CLIENT_TYPE\" = 'predis' -a \"$TRAVIS_PHP_VERSION\" = '5.5' ]; then wget https://scrutinizer-ci.com/ocular.phar; fi"
+  - sh -c "if [ \"$RESQUE_CLIENT_TYPE\" = 'predis' -a \"$TRAVIS_PHP_VERSION\" = '5.5' ]; then php ocular.phar code-coverage:upload --format=php-clover coverage.clover; fi"
