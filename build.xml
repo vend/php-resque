@@ -47,10 +47,12 @@
 
         <exec dir="${basedir}/build/phpiredis-master" executable="./configure" failonerror="true">
             <arg value="--enable-phpiredis" />
+            <arg value="--with-hiredis-dir=../hiredis-master" />
         </exec>
 
         <exec dir="${basedir}/build/phpiredis-master" executable="make" failonerror="true" />
         <exec dir="${basedir}/build/phpiredis-master" executable="make" failonerror="true">
+            <env key="PREFIX" value="." />
             <arg value="install" />
         </exec>
     </target>
@@ -61,6 +63,7 @@
 
         <exec dir="${basedir}/build/hiredis-master" executable="make" failonerror="true" />
         <exec dir="${basedir}/build/hiredis-master" executable="make" failonerror="true">
+            <env key="PREFIX" value="."/>
             <arg value="install" />
         </exec>
     </target>
