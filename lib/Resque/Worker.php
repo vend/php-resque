@@ -132,7 +132,7 @@ class Worker implements LoggerAwareInterface
             'id_location_preg' => '/^([^:]+?):([0-9]+):/',
             'shuffle_queues'   => true,
             'sort_queues'      => false
-        ), $this->options);
+        ), $options);
 
         if (!$this->options['server_name']) {
             $this->options['server_name'] = function_exists('gethostname') ? gethostname() : php_uname('n');
