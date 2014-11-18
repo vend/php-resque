@@ -12,6 +12,8 @@ $settings = new Resque\Test\Settings();
 $settings->setLogger($logger);
 $settings->fromEnvironment();
 $settings->setBuildDir($build);
+$settings->checkBuildDir();
+$settings->dumpConfig();
 $settings->catchSignals();
 $settings->startRedis(); // registers shutdown function
 

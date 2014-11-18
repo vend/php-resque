@@ -68,7 +68,6 @@ class Settings implements LoggerAwareInterface
 
     public function startRedis()
     {
-        $this->checkBuildDir();
         $this->dumpRedisConfig();
         $this->registerShutdown();
 
@@ -130,7 +129,7 @@ class Settings implements LoggerAwareInterface
         }
     }
 
-    protected function checkBuildDir()
+    public function checkBuildDir()
     {
         if (!is_dir($this->buildDir)) {
             mkdir($this->buildDir);
@@ -150,9 +149,7 @@ class Settings implements LoggerAwareInterface
             $conf .= "$name $value\n";
         }
 
-        $this->logger->info('Dumping redis config to {file}', array('file' => $file));
-        $this->logger->debug($conf);
-
+        $this->logger->info('Dumping redis config {config} to {file}', array('file' => $file, 'config' => $conf));
         file_put_contents($file, $conf);
     }
 
@@ -225,5 +222,19 @@ class Settings implements LoggerAwareInterface
     public function getLogger()
     {
         return $this->logger;
+    }
+
+    /**
+     * Dumps configuration to a file
+     *
+     * @return void
+     */
+    public function dumpConfig()
+    {
+        $file = $this->buildDir . \DIRECTORY_SEPARATOR . 'settings.json';
+        $config = json_encode(get_object_vars($this), JSON_PRETTY_PRINT);
+
+        $this->logger->info('Dumping test config {config} to {file}', array('file' => $file, 'config' => $config));
+        file_put_contents($file, $config);
     }
 }
