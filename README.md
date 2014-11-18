@@ -137,160 +137,63 @@ If you're running a full-stack web application, you'd generally use your
 locator/service container to fill in the Redis client connection in this
 file. (The default is to use Predis, and to connect to 127.0.0.1:6379).
 
-### Usage
+### Basic Usage
 
 ```
-Resque Console Tool version 2.1.x
-
-Usage:
-  [options] command [arguments]
-
-Options:
-  --help           -h Display this help message.
-  --quiet          -q Do not output any message.
-  --verbose        -v|vv|vvv Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
-  --version        -V Display this application version.
-  --ansi              Force ANSI output.
-  --no-ansi           Disable ANSI output.
-  --no-interaction -n Do not ask any interactive question.
+resque <subcommand>
 
 Available commands:
-  enqueue   Enqueues a job into a queue
-  help      Displays help for a command
-  list      Lists commands
-  queues    Outputs information about queues
+  enqueue       Enqueues a job into a queue
+  help          Displays help for a command
+  list          Lists commands
+  worker        Runs a Resque worker
+queue
+  queue:clear   Clears a specified queue
+  queue:list    Outputs information about queues
 ```
 
-<!--
+### Enqueueing
 
-A basic "up-and-running" `bin/resque` file is included that sets up a
-running worker environment. (`vendor/bin/resque` when installed
-via Composer)
+This command will enqueue a `Some\Test\Job` job onto the `default` queue.
+Watch out for the single quotes around the class name: when specifying backslashes
+on the command line, you'll probably have to avoid your shell escaping them.
 
-The exception to the similarities with the Ruby version of resque is
-how a worker is initially setup. To work under all environments,
-not having a single environment such as with Ruby, the PHP port makes
-*no* assumptions about your setup.
-
-```sh
-$ QUEUE=file_serve php bin/resque
+```
+resque enqueue default 'Some\Test\Job' -t
 ```
 
-It's your responsibility to tell the worker which file to include to get
-your application underway. You do so by setting the `APP_INCLUDE` environment
-variable:
+### Worker
 
-```sh
-$ QUEUE=file_serve APP_INCLUDE=../application/init.php php bin/resque
+This command will run a simple pre-forking worker on two queues:
+
+```
+resque worker -Q default -Q some_other_queue
 ```
 
-*Pro tip: Using Composer? More than likely, you don't need to worry about
-`APP_INCLUDE`, because hopefully Composer is responsible for autoloading
-your application too!*
+(`-q` means quiet, `-Q` specifies queues). You can also specify no queues, or
+the special queue `'*'` (watch for shell expansion).
 
-Getting your application underway also includes telling the worker your job
-classes, by means of either an autoloader or including them.
 
-Alternately, you can always `include('bin/resque')` from your application and
-skip setting `APP_INCLUDE` altogether.  Just be sure the various environment
-variables are set (`setenv`) before you do.
+### Queue Information
 
-### Logging ###
+There are a couple of useful commands for getting information about the queues. This
+will show a list of queues and how many jobs are waiting on each:
 
-The port supports the same environment variables for logging to STDOUT.
-Setting `VERBOSE` will print basic debugging information and `VVERBOSE`
-will print detailed information.
-
-```sh
-$ VERBOSE=1 QUEUE=file_serve bin/resque
-$ VVERBOSE=1 QUEUE=file_serve bin/resque
+```
+resque queue:list
 ```
 
-### Priorities and Queue Lists ###
+This command will clear a specified queue:
 
-Similarly, priority and queue list functionality works exactly
-the same as the Ruby workers. Multiple queues should be separated with
-a comma, and the order that they're supplied in is the order that they're
-checked in.
-
-As per the original example:
-
-```sh
-$ QUEUE=file_serve,warm_cache bin/resque
+```
+resque queue:clear default
 ```
 
-The `file_serve` queue will always be checked for new jobs on each
-iteration before the `warm_cache` queue is checked.
+### Logging
 
-### Running All Queues ###
-
-All queues are supported in the same manner and processed in alphabetical
-order:
-
-```sh
-$ QUEUE='*' bin/resque
-```
-
-### Running Multiple Workers ###
-
-Multiple workers can be launched simultaneously by supplying the `COUNT`
-environment variable:
-
-```sh
-$ COUNT=5 bin/resque
-```
-
-Be aware, however, that each worker is its own fork, and the original process
-will shut down as soon as it has spawned `COUNT` forks.  If you need to keep
-track of your workers using an external application such as `monit`, you'll
-need to work around this limitation.
-
-### Custom prefix ###
-
-When you have multiple apps using the same Redis database it is better to
-use a custom prefix to separate the Resque data:
-
-```sh
-$ PREFIX=my-app-name bin/resque
-```
-
-### Forking ###
-
-Similarly to the Ruby versions, supported platforms will immediately
-fork after picking up a job. The forked child will exit as soon as
-the job finishes.
-
-The difference with php-resque is that if a forked child does not
-exit nicely (PHP error or such), php-resque will automatically fail
-the job.
-
-### Signals ###
-
-Signals also work on supported platforms exactly as in the Ruby
-version of Resque:
-
-* `QUIT` - Wait for job to finish processing then exit
-* `TERM` / `INT` - Immediately kill job then exit
-* `USR1` - Immediately kill job but don't exit
-* `USR2` - Pause worker, no new jobs will be processed
-* `CONT` - Resume worker.
-
-### Process Titles/Statuses ###
-
-The Ruby version of Resque has a nifty feature whereby the process
-title of the worker is updated to indicate what the worker is doing,
-and any forked children also set their process title with the job
-being run. This helps identify running processes on the server and
-their resque status.
-
-**PHP does not have this functionality by default until 5.5.**
-
-A PECL module (<http://pecl.php.net/package/proctitle>) exists that
-adds this functionality to PHP before 5.5, so if you'd like process
-titles updated, install the PECL module as well. php-resque will
-automatically detect and use it.
-
--->
+The library now uses PSR3. When running as a console component, you can customise
+the logger to use in `cli-config.php`. (For instance, you might like to send your
+worker logs to Monolog.)
 
 ## Why Fork?
 

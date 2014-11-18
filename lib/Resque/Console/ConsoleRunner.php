@@ -5,7 +5,6 @@ namespace Resque\Console;
 use Resque\Client\ClientInterface;
 use Resque\Version;
 use Symfony\Component\Console\Application;
-use Symfony\Component\Console\Helper\Helper;
 use Symfony\Component\Console\Helper\HelperSet;
 
 class ConsoleRunner
@@ -18,10 +17,15 @@ class ConsoleRunner
      * @param ClientInterface $client Redis connection
      * @return HelperSet
      */
-    public static function createHelperSet($client)
+    public static function createHelperSet($client, $logger = null)
     {
         $helper = new HelperSet();
         $helper->set(new RedisHelper($client));
+
+        if ($logger) {
+            $helper->set(new LoggerHelper($logger));
+        }
+
         return $helper;
     }
 
