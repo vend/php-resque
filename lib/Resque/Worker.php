@@ -63,7 +63,7 @@ class Worker implements LoggerAwareInterface
     protected $currentJob = null;
 
     /**
-     * @var array<mixed>
+     * @var array<string,mixed>
      */
     protected $options = array();
 
@@ -108,7 +108,7 @@ class Worker implements LoggerAwareInterface
     /**
      * Configures options for the worker
      *
-     * @param array $options
+     * @param array<string,mixed> $options
      *   Including
      *     Worker identification
      *       - server_name      => string, default is FQDN hostname
@@ -118,8 +118,6 @@ class Worker implements LoggerAwareInterface
      *                               out of worker ID
      *       - shuffle_queues   => bool, whether to shuffle the queues on reserve, so we evenly check all queues
      *       - sort_queues      => bool, whether to check the queues in alphabetical order (mutually exclusive with shuffle_queues)
-     *
-     * @see Resque\Util.Configurable::configure()
      */
     protected function configure(array $options)
     {
