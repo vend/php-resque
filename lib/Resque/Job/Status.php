@@ -50,7 +50,7 @@ class Status
      *
      * @var array<int>
      */
-    public  static $valid = array(
+    public static $valid = array(
         self::STATUS_WAITING   => 'waiting',
         self::STATUS_RUNNING   => 'running',
         self::STATUS_FAILED    => 'failed',
@@ -304,6 +304,20 @@ class Status
     }
 
     /**
+     * @return string
+     */
+    public function getStatus()
+    {
+        $status = $this->get();
+
+        if (isset(self::$valid[$status])) {
+            return self::$valid[$status];
+        }
+
+        return 'unknown';
+    }
+
+    /**
      * Gets a single attribute value
      *
      * @param string $name
@@ -346,6 +360,7 @@ class Status
 
     /**
      * Accessor to return valid statuses
+     *
      * @return \Resque\Job\array<int>
      */
     public function getValid()
@@ -355,6 +370,7 @@ class Status
 
     /**
      * Accessor to return complete statuses
+     *
      * @return \Resque\Job\array<int>
      */
     public function getComplete()

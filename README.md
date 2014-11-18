@@ -1,15 +1,14 @@
 # Resque for PHP
 ## Namespaced Fork
 
-Resque is a Redis-backed library for creating background jobs, placing
+[Resque](https://github.com/resque/resque) is a Redis-backed library for creating background jobs, placing
 those jobs on one or more queues, and processing them later.
 
-[chrisboulton/php-resque](https://github.com/chrisboulton/php-resque) is a PHP port of the
-Redis queuing strategy. This makes it compatible with the resque-web interface,
-and with other Resque libraries. (You could enqueue jobs from Ruby and dequeue
+This is a PHP fork of the Resque worker and job classes. This makes it compatible with the 
+resque-web interface, and with other Resque libraries. (You could enqueue jobs from Ruby and dequeue
 them in PHP, for instance).
 
-This library (vend/php-resque) is a fork of chrisboulton/php-resque at around
+This library (`vend/resque`) is a fork of [chrisboulton/php-resque](https://github.com/chrisboulton/php-resque) at around
 version 1.3, that has been refactored to remove global state, add namespacing, and improve
 decoupling. This makes it easier to use and extend.
 
@@ -20,7 +19,7 @@ Add `vend/resque` to your application's composer.json.
 ```json
 {
     "require": {
-        "vend/resque": "~2.1.x"
+        "vend/resque": "~2.1.0"
     }
 }
 ```
@@ -30,7 +29,7 @@ Add `vend/resque` to your application's composer.json.
 * PHP 5.3+
 * A Redis client library (for instance, [Predis](https://github.com/nrk/predis) or [Credis](https://github.com/colinmollenhour/credis))
 
-## Why this branch?
+## Why Fork?
 
 Unfortunately, several things about the existing versions of php-resque made it
 a candidate for refactoring:
@@ -62,9 +61,6 @@ a candidate for refactoring:
     several other classes, and could not be easily extended.
 * The library is now fully namespaced and compatible with PSR-0. The top level
     namespace is `Resque`.
-
-## Other Changes
-
 * The events system has been removed. There is now little need for it.
   It seems like the events system was just a workaround due to the poor
   extensibility of the Worker class. The library should allow you to extend any
@@ -72,113 +68,96 @@ a candidate for refactoring:
   subclass.
 
 
+## Jobs
 
-
-## Jobs ##
-
-### Queueing Jobs ###
+### Queueing Jobs
 
 Jobs are queued as follows:
 
 ```php
-    use Resque\Resque;
-    use Predis\Client;
+use Resque\Resque;
+use Predis\Client;
 
-    $resque = new Resque(new Client());
-    $resque->enqueue('default_queue', 'App\Job', array('foo' => 'bar'));
+$resque = new Resque(new Client());
+$resque->enqueue('default_queue', 'App\Job', array('foo' => 'bar'), true);
 ```
 
-<!--
-### Defining Jobs ###
+In order the arguments are: queue, job class, job payload, whether to enable tracking.
 
-Each job should be in its own class, and include a `perform` method.
+### Defining Jobs
+
+Each job should be in its own class, and implement the `Resque\JobInterface`. (This is pretty easy,
+and only really requires a single custom method: `perform()`.) Most of the time, you'll want to
+use the default implementation of a Job, and extend the `Resque\AbstractJob` instead of implementing
+the interface yourself:
 
 ```php
 namespace App;
 
-class Job
+use Resque\AbstractJob;
+
+class Job extends AbstractJob
 {
     public function perform()
     {
-        // Work work work
-        echo $this->args['name'];
+        // work work work
+        $this->doSomething($this->payload['foo']);
     }
 }
 ```
-
-When the job is run, the class will be instantiated and any arguments
-will be set as an array on the instantiated object, and are accessible
-via `$this->args`.
 
 Any exception thrown by a job will result in the job failing - be
 careful here and make sure you handle the exceptions that shouldn't
 result in a job failing.
 
-Jobs can also have `setUp` and `tearDown` methods. If a `setUp` method
-is defined, it will be called before the `perform` method is run.
-The `tearDown` method, if defined, will be called after the job finishes.
+### Job Status Tracking
 
-
-```php
-class My_Job
-{
-    public function setUp()
-    {
-        // ... Set up environment for this job
-    }
-
-    public function perform()
-    {
-        // .. Run job
-    }
-
-    public function tearDown()
-    {
-        // ... Remove environment for this job
-    }
-}
-```
-
-### Tracking Job Statuses ###
-
-php-resque has the ability to perform basic status tracking of a queued
+vend/resque has the ability to perform basic status tracking of a queued
 job. The status information will allow you to check if a job is in the
 queue, is currently being run, has finished, or has failed.
 
 To track the status of a job, pass `true` as the fourth argument to
-`Resque::enqueue`. A token used for tracking the job status will be
+`Resque\Resque::enqueue`. An ID used for tracking the job status will be
 returned:
 
 ```php
-$token = Resque::enqueue('default', 'My_Job', $args, true);
-echo $token;
+$id = $resque->enqueue('default_queue', 'App\Job', $payload, true);
+echo $id; // [0-9a-f]{16}
 ```
 
 To fetch the status of a job:
 
 ```php
-$status = new Resque_Job_Status($token);
-echo $status->get(); // Outputs the status
+$factory = new Resque\Job\StatusFactory($resque);
+
+// Pass the ID returned from enqueue
+$status = $factory->getForId($id);
+
+// Alternatively, to get the status for a Job instance:
+$status = $factory->getForJob($job);
+
+// Outputs the status as a string: 'waiting', 'running', 'complete', etc.
+echo $status->getStatus(); 
 ```
 
-Job statuses are defined as constants in the `Resque_Job_Status` class.
+#### Statuses
+
+Job statuses are defined as constants in the `Resque\Job\Status` class.
 Valid statuses include:
 
-* `Resque_Job_Status::STATUS_WAITING` - Job is still queued
-* `Resque_Job_Status::STATUS_RUNNING` - Job is currently running
-* `Resque_Job_Status::STATUS_FAILED` - Job has failed
-* `Resque_Job_Status::STATUS_COMPLETE` - Job is complete
-* `false` - Failed to fetch the status - is the token valid?
+* `Resque\Job\Status::STATUS_WAITING` - Job is still queued
+* `Resque\Job\Status::STATUS_RUNNING` - Job is currently running
+* `Resque\Job\Status::STATUS_FAILED` - Job has failed
+* `Resque\Job\Status::STATUS_COMPLETE` - Job is complete
 
 Statuses are available for up to 24 hours after a job has completed
 or failed, and are then automatically expired. A status can also
 forcefully be expired by calling the `stop()` method on a status
 class.
 
-## Workers ##
+<!--
 
-Workers work in the exact same way as the Ruby workers. For complete
-documentation on workers, see the original documentation.
+## Workers ##
 
 A basic "up-and-running" `bin/resque` file is included that sets up a
 running worker environment. (`vendor/bin/resque` when installed
@@ -188,8 +167,6 @@ The exception to the similarities with the Ruby version of resque is
 how a worker is initially setup. To work under all environments,
 not having a single environment such as with Ruby, the PHP port makes
 *no* assumptions about your setup.
-
-To start a worker, it's very similar to the Ruby version:
 
 ```sh
 $ QUEUE=file_serve php bin/resque

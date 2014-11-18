@@ -2,12 +2,28 @@
 
 namespace Resque\Console;
 
-use Doxport\Version;
+use Resque\Version;
 use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Helper\Helper;
 use Symfony\Component\Console\Helper\HelperSet;
 
 class ConsoleRunner
 {
+    /**
+     * Creates a helper set for the console component
+     *
+     * A convenience method (you could always define your own HelperSet separately). Useful for writing cli-config.php.
+     *
+     * @param object $client Redis connection
+     * @return HelperSet
+     */
+    public static function createHelperSet($client)
+    {
+        $helper = new HelperSet();
+        $helper->set(new RedisHelper($client));
+        return $helper;
+    }
+
     /**
      * Runs the application using the given HelperSet
      *
@@ -25,8 +41,7 @@ class ConsoleRunner
         $application->setCatchExceptions(true);
         $application->setHelperSet($helperSet);
 
-        $application->add(new ExportCommand());
-        $application->add(new DeleteCommand());
+        $application->add(new QueuesCommand());
 
         return $application->run();
     }

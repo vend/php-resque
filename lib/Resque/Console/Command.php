@@ -1,6 +1,6 @@
 <?php
 
-namespace Doxport\Console;
+namespace Resque\Console;
 
 use Psr\Log\LoggerInterface;
 use Resque\Resque;
