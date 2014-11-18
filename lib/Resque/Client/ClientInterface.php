@@ -75,6 +75,7 @@ interface ClientInterface
 
     /**
      * @param string $key
+     * @return array
      */
     public function smembers($key);
 

@@ -37,7 +37,7 @@ class Resque implements LoggerAwareInterface
     private $client;
 
     /**
-     * @var array<string => mixed>
+     * @var array<string,mixed>
      */
     protected $options;
 
@@ -72,7 +72,7 @@ class Resque implements LoggerAwareInterface
      * Configures the options of the resque background queue system
      *
      * @param array $options
-     * @return array<string => mixed>
+     * @return array<string,mixed>
      */
     public function configure(array $options)
     {
@@ -282,17 +282,11 @@ class Resque implements LoggerAwareInterface
     /**
      * Get an array of all known queues.
      *
-     * @return array Array of queues.
+     * @return array<string>
      */
     public function queues()
     {
-        $queues = $this->getClient()->smembers($this->getKey(self::QUEUES_KEY));
-
-        if (!is_array($queues)) {
-            $queues = array();
-        }
-
-        return $queues;
+        return $this->getSetMembers(self::QUEUES_KEY);
     }
 
     /**
@@ -302,13 +296,22 @@ class Resque implements LoggerAwareInterface
      */
     public function getWorkerIds()
     {
-        $workers = $this->getClient()->smembers($this->getKey(self::WORKERS_KEY));
+        return $this->getSetMembers(self::WORKERS_KEY);
+    }
 
-        if (!is_array($workers)) {
-            $workers = array();
+    /**
+     * @param string $suffix Partial key (don't pass to getKey() - let this method do it for you)
+     * @return array<string>
+     */
+    protected function getSetMembers($suffix)
+    {
+        $members = $this->getClient()->smembers($this->getKey($suffix));
+
+        if (!is_array($members)) {
+            $members = array();
         }
 
-        return $workers;
+        return $members;
     }
 
     /**
