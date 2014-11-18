@@ -73,7 +73,7 @@ class RedisBackend implements BackendInterface
     /**
      * Find the ultimate cause exception, by following previous members right back
      *
-     * @param \Exception|\Resque\Exception\Exception $exception
+     * @param Exception $exception
      * @return Exception
      */
     protected function getDistalCause(\Exception $exception)
@@ -87,7 +87,7 @@ class RedisBackend implements BackendInterface
     /**
      * Find the class names of the exceptions
      *
-     * @param \Exception|\Resque\Exception\Exception $exception
+     * @param Exception $exception
      * @return string
      */
     protected function getClass(\Exception $exception)

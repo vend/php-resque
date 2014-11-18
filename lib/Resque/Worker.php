@@ -157,7 +157,7 @@ class Worker implements LoggerAwareInterface
     }
 
     /**
-     * @return ClientInterface
+     * @return Client\ClientInterface
      */
     protected function getClient()
     {

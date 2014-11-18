@@ -7,7 +7,6 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use Psr\Log\NullLogger;
 use Resque\Client\ClientInterface;
-use Resque\Exception;
 use Resque\Failure\BackendInterface;
 use Resque\Failure\RedisBackend;
 use Resque\Job;
@@ -59,6 +58,7 @@ class Resque implements LoggerAwareInterface
 
     /**
      * Constructor
+     * @param ClientInterface $client
      */
     public function __construct($client, array $options = array())
     {
