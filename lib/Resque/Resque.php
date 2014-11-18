@@ -63,6 +63,7 @@ class Resque implements LoggerAwareInterface
     public function __construct($client, array $options = array())
     {
         $this->client = $client;
+        $this->logger = new NullLogger();
 
         $this->configure($options);
     }
@@ -381,10 +382,6 @@ class Resque implements LoggerAwareInterface
      */
     public function getLogger()
     {
-        if (!$this->logger) {
-            $this->logger = new NullLogger();
-        }
-
         return $this->logger;
     }
 }
