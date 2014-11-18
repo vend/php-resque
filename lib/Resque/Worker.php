@@ -396,11 +396,13 @@ class Worker implements LoggerAwareInterface
     }
 
     /**
-     * Attempt to find a job from the top of one of the queues for this worker.
+     * Prepares the list of queues for a job to reserved
      *
-     * @return JobInterface Instance of JobInterface if a job is found, null if not.
+     * Updates/sorts/shuffles the array ahead of the call to reserve a job from one of them
+     *
+     * @return void
      */
-    public function reserve()
+    protected function refreshQueues()
     {
         if ($this->refreshQueues) {
             $this->queues = $this->resque->queues();
@@ -423,6 +425,16 @@ class Worker implements LoggerAwareInterface
         } elseif ($this->options['sort_queues']) {
             sort($this->queues);
         }
+    }
+
+    /**
+     * Attempt to find a job from the top of one of the queues for this worker.
+     *
+     * @return JobInterface|null Instance of JobInterface if a job is found, null if not.
+     */
+    public function reserve()
+    {
+        $this->refreshQueues();
 
         $this->logger->debug('Attempting to reserve job from {queues}', array(
             'queues' => empty($this->queues) ? 'empty queue list' : implode(', ', $this->queues)
