@@ -358,6 +358,8 @@ class Worker implements LoggerAwareInterface
             $this->logger->warning('Could not mark job complete: no ID in payload - {exception}', array('exception' => $e));
         }
 
+        $payload = $job->getPayload();
+
         $this->logger->notice('Finished job {queue}/{class} (ID: {id})', array(
             'queue' => $job->getQueue(),
             'class' => get_class($job),
@@ -424,7 +426,9 @@ class Worker implements LoggerAwareInterface
             sort($this->queues);
         }
 
-        $this->logger->debug('Reserving job from {queues}', array('queues' => empty($this->queues) ? 'empty queue list' : implode(', ', $this->queues)));
+        $this->logger->debug('Attempting to reserve job from {queues}', array(
+            'queues' => empty($this->queues) ? 'empty queue list' : implode(', ', $this->queues)
+        ));
 
         foreach ($this->queues as $queue) {
             $payload = $this->resque->pop($queue);

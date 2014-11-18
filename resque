@@ -1,8 +1,6 @@
 #!/usr/bin/env php
 <?php
 
-
-
 use Resque\Console\ConsoleRunner;
 
 $directories = array(
