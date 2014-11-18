@@ -44,6 +44,7 @@ class ConsoleRunner
 
         $application->add(new QueuesCommand());
         $application->add(new EnqueueCommand());
+        $application->add(new WorkerCommand());
 
         return $application->run();
     }

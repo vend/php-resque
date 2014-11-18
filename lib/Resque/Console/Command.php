@@ -5,8 +5,8 @@ namespace Resque\Console;
 use Resque\Client\ClientInterface;
 use Resque\Resque;
 use Symfony\Component\Console\Command\Command as CommandComponent;
-use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Logger\ConsoleLogger;
 
 abstract class Command extends CommandComponent
 {
@@ -19,10 +19,16 @@ abstract class Command extends CommandComponent
     }
 
     /**
+     * @param OutputInterface $output
      * @return \Resque\Resque
      */
-    public function getResque()
+    public function getResque(OutputInterface $output)
     {
-        return new Resque($this->getRedis());
+        $logger = new ConsoleLogger($output);
+
+        $resque = new Resque($this->getRedis());
+        $resque->setLogger($logger);
+
+        return $resque;
     }
 }

@@ -339,7 +339,14 @@ class Resque implements LoggerAwareInterface
 
         exec($command, $output, $return);
 
-        if ($return !== 0) {
+        /*
+         * Exit codes:
+         *   0 One or more processes were matched
+         *   1 No processes were matched
+         *   2 Invalid options were specified on the command line
+         *   3 An internal error occurred
+         */
+        if ($return !== 0 && $return !== 1) {
             $this->logger->warning('Unable to determine worker PIDs');
             return array();
         }

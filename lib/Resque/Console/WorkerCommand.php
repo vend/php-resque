@@ -21,11 +21,17 @@ class WorkerCommand extends Command
             ->setDescription('Runs a Resque worker')
             ->addOption(
                 'queue',
-                'q',
+                'Q',
                 InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
                 'A queue to listen to and run jobs from'
             )
-            ->addOption();
+            ->addOption(
+                'interval',
+                'i',
+                InputOption::VALUE_REQUIRED,
+                'Interval in seconds to wait for between reserving jobs',
+                5
+            );
     }
 
     /**
@@ -35,8 +41,7 @@ class WorkerCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $resque = $this->getResque();
-
+        $resque = $this->getResque($output);
         $queues = $input->getOption('queue');
 
         $worker = new Worker($resque, $queues);

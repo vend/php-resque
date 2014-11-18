@@ -1,6 +1,5 @@
 <?php
 
-
 namespace Resque;
 
 use \Exception;
@@ -18,9 +17,8 @@ use \RuntimeException;
  * Resque worker that handles checking queues for jobs, fetching them
  * off the queues, running them and handling the result.
  *
- * @package        Resque/Worker
- * @author        Chris Boulton <chris@bigcommerce.com>
- * @license        http://www.opensource.org/licenses/mit-license.php
+ * @author  Chris Boulton <chris@bigcommerce.com>
+ * @license http://www.opensource.org/licenses/mit-license.php
  */
 class Worker implements LoggerAwareInterface
 {
@@ -408,12 +406,25 @@ class Worker implements LoggerAwareInterface
             $this->queues = $this->resque->queues();
         }
 
+        if (!$this->queues) {
+            if ($this->refreshQueues) {
+                $this->logger->info('Refreshing queues dynamically, but there are no queues yet');
+            } else {
+                $this->logger->notice('Not listening to any queues, and dynamic queue refreshing is disabled');
+                $this->killChild();
+                $this->unregister();
+                exit(1);
+            }
+        }
+
         // Each call to reserve, we check the queues in a different order
         if ($this->options['shuffle_queues']) {
             shuffle($this->queues);
         } elseif ($this->options['sort_queues']) {
             sort($this->queues);
         }
+
+        $this->logger->debug('Reserving job from {queues}', array('queues' => empty($this->queues) ? 'empty queue list' : implode(', ', $this->queues)));
 
         foreach ($this->queues as $queue) {
             $payload = $this->resque->pop($queue);
@@ -650,6 +661,7 @@ class Worker implements LoggerAwareInterface
      */
     public function register()
     {
+        $this->logger->debug('Registering worker ' . $this->getId());
         $this->resque->getClient()->sadd($this->resque->getKey(Resque::WORKERS_KEY), $this->getId());
         $this->resque->getClient()->set($this->getJobKey() . ':started', strftime('%a %b %d %H:%M:%S %Z %Y'));
     }
@@ -659,6 +671,8 @@ class Worker implements LoggerAwareInterface
      */
     public function unregister()
     {
+        $this->logger->debug('Unregistering worker ' . $this->getId());
+
         if ($this->currentJob) {
             $this->failJob($this->currentJob, new DirtyExitException());
         }
