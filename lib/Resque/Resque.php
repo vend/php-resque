@@ -6,19 +6,19 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use Psr\Log\NullLogger;
+use Resque\Client\ClientInterface;
 use Resque\Exception;
 use Resque\Failure\BackendInterface;
 use Resque\Failure\RedisBackend;
 use Resque\Job;
 use Resque\Job\Status;
-
 use \InvalidArgumentException;
 use Resque\Job\StatusFactory;
 
 /**
  * Base Resque class
  *
- * @license        http://www.opensource.org/licenses/mit-license.php
+ * @license http://www.opensource.org/licenses/mit-license.php
  */
 class Resque implements LoggerAwareInterface
 {
@@ -33,7 +33,7 @@ class Resque implements LoggerAwareInterface
     /**#@-*/
 
     /**
-     * @var \Resque\ClientInterface
+     * @var ClientInterface
      */
     private $client;
 
@@ -90,7 +90,7 @@ class Resque implements LoggerAwareInterface
      * The Redis client can be any object that implements a suitable subset
      * of Redis commands.
      *
-     * @return \Resque\ClientInterface
+     * @return ClientInterface
      */
     public function getClient()
     {

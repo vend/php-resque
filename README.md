@@ -4,7 +4,7 @@
 [Resque](https://github.com/resque/resque) is a Redis-backed library for creating background jobs, placing
 those jobs on one or more queues, and processing them later.
 
-This is a PHP fork of the Resque worker and job classes. This makes it compatible with the 
+This is a PHP fork of the Resque worker and job classes. This makes it compatible with the
 resque-web interface, and with other Resque libraries. (You could enqueue jobs from Ruby and dequeue
 them in PHP, for instance).
 
@@ -28,45 +28,6 @@ Add `vend/resque` to your application's composer.json.
 
 * PHP 5.3+
 * A Redis client library (for instance, [Predis](https://github.com/nrk/predis) or [Credis](https://github.com/colinmollenhour/credis))
-
-## Why Fork?
-
-Unfortunately, several things about the existing versions of php-resque made it
-a candidate for refactoring:
-
-* php-resque supported the Credis connection library and had hard-coded this
-  support by using static accessors. This meant more advanced features such as
-  replication and pipelining were unavailable.
-  * Now, Resque for PHP supports any client object that implements a suitable
-    subset of Redis commands.  No type-checking is done on the passed in connection,
-    meaning you're free to use Predis, or whatever you like.
-* While the public API of `php-resque` was alright, the protected API was pretty
-  much useless. This made it hard to extend worker classes to dispatch jobs differently.
-* Important state (the underlying connection) was thrown into the global scope
-  by hiding it behind static accessors (`Resque::redis()`). This makes things
-  easier for the library author (because he/she need not think about dependencies)
-  but also statically ties together the classes in the library: it makes
-  testing and extending the library hard.
-  * There's no reason to do this: `Resque` instances should simply use DI and
-    take a client connection as a required constructor argument.
-  * This improvement also allows the connection to be mocked without extending
-    the `Resque` class.
-  * And it lets you reuse your existing connection to Redis, if you have one.
-    No need to open a new connection just to enqueue a job.
-* Statistic classes were static for no good reason.
-  * To work, statistics need a connection to Redis, a name, and several methods
-    (get, set). State and methods to manipulate it? Sounds like a task for
-    objects! *Not* just static methods, that don't encapsulate any of the state.
-  * Because these were static calls, the `Resque_Stat` class was hard-coded into
-    several other classes, and could not be easily extended.
-* The library is now fully namespaced and compatible with PSR-0. The top level
-    namespace is `Resque`.
-* The events system has been removed. There is now little need for it.
-  It seems like the events system was just a workaround due to the poor
-  extensibility of the Worker class. The library should allow you to extend any
-  class you like, and no method should be too long or arduous to move into a
-  subclass.
-
 
 ## Jobs
 
@@ -122,7 +83,7 @@ returned:
 
 ```php
 $id = $resque->enqueue('default_queue', 'App\Job', $payload, true);
-echo $id; // [0-9a-f]{16}
+echo $id; // [0-9a-f]{32}
 ```
 
 To fetch the status of a job:
@@ -137,8 +98,12 @@ $status = $factory->getForId($id);
 $status = $factory->getForJob($job);
 
 // Outputs the status as a string: 'waiting', 'running', 'complete', etc.
-echo $status->getStatus(); 
+echo $status->getStatus();
 ```
+
+The Status object contains methods for adding other attributes to the
+tracked status. (For instance, you might use the status object to track
+errors, completion information, iterations, etc.)
 
 #### Statuses
 
@@ -155,9 +120,48 @@ or failed, and are then automatically expired. A status can also
 forcefully be expired by calling the `stop()` method on a status
 class.
 
-<!--
+## Console
 
-## Workers ##
+You are free you implement your own daemonization/worker pool strategy by
+subclassing the `Worker` class. For playing around, and low throughput
+applications, you might like to use the built-in console commands.
+
+This version of the library uses the Symfony2 Console component. But it
+must be configured with the details of your Redis connection. We do this
+in much the same way that the Doctrine2 Console component gets details
+of your database connection: via a `cli-config.php` file.
+
+There is an example `cli-config.php` in this repository.
+
+If you're running a full-stack web application, you'd generally use your
+locator/service container to fill in the Redis client connection in this
+file. (The default is to use Predis, and to connect to 127.0.0.1:6379).
+
+### Usage
+
+```
+Resque Console Tool version 2.1.x
+
+Usage:
+  [options] command [arguments]
+
+Options:
+  --help           -h Display this help message.
+  --quiet          -q Do not output any message.
+  --verbose        -v|vv|vvv Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
+  --version        -V Display this application version.
+  --ansi              Force ANSI output.
+  --no-ansi           Disable ANSI output.
+  --no-interaction -n Do not ask any interactive question.
+
+Available commands:
+  enqueue   Enqueues a job into a queue
+  help      Displays help for a command
+  list      Lists commands
+  queues    Outputs information about queues
+```
+
+<!--
 
 A basic "up-and-running" `bin/resque` file is included that sets up a
 running worker environment. (`vendor/bin/resque` when installed
@@ -286,8 +290,45 @@ adds this functionality to PHP before 5.5, so if you'd like process
 titles updated, install the PECL module as well. php-resque will
 automatically detect and use it.
 
-<<<<<<< HEAD
 -->
+
+## Why Fork?
+
+Unfortunately, several things about the existing versions of php-resque made it
+a candidate for refactoring:
+
+* php-resque supported the Credis connection library and had hard-coded this
+  support by using static accessors. This meant more advanced features such as
+  replication and pipelining were unavailable.
+  * Now, Resque for PHP supports any client object that implements a suitable
+    subset of Redis commands.  No type-checking is done on the passed in connection,
+    meaning you're free to use Predis, or whatever you like.
+* While the public API of `php-resque` was alright, the protected API was pretty
+  much useless. This made it hard to extend worker classes to dispatch jobs differently.
+* Important state (the underlying connection) was thrown into the global scope
+  by hiding it behind static accessors (`Resque::redis()`). This makes things
+  easier for the library author (because he/she need not think about dependencies)
+  but also statically ties together the classes in the library: it makes
+  testing and extending the library hard.
+  * There's no reason to do this: `Resque` instances should simply use DI and
+    take a client connection as a required constructor argument.
+  * This improvement also allows the connection to be mocked without extending
+    the `Resque` class.
+  * And it lets you reuse your existing connection to Redis, if you have one.
+    No need to open a new connection just to enqueue a job.
+* Statistic classes were static for no good reason.
+  * To work, statistics need a connection to Redis, a name, and several methods
+    (get, set). State and methods to manipulate it? Sounds like a task for
+    objects! *Not* just static methods, that don't encapsulate any of the state.
+  * Because these were static calls, the `Resque_Stat` class was hard-coded into
+    several other classes, and could not be easily extended.
+* The library is now fully namespaced and compatible with PSR-0. The top level
+    namespace is `Resque`.
+* The events system has been removed. There is now little need for it.
+  It seems like the events system was just a workaround due to the poor
+  extensibility of the Worker class. The library should allow you to extend any
+  class you like, and no method should be too long or arduous to move into a
+  subclass.
 
 ## Contributors ##
 

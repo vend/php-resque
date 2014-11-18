@@ -2,6 +2,7 @@
 
 namespace Resque\Console;
 
+use Resque\Client\ClientInterface;
 use Resque\Version;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Helper\Helper;
@@ -14,7 +15,7 @@ class ConsoleRunner
      *
      * A convenience method (you could always define your own HelperSet separately). Useful for writing cli-config.php.
      *
-     * @param object $client Redis connection
+     * @param ClientInterface $client Redis connection
      * @return HelperSet
      */
     public static function createHelperSet($client)
@@ -37,11 +38,12 @@ class ConsoleRunner
      */
     public static function run(HelperSet $helperSet)
     {
-        $application = new Application('Resque worker tool', Version::VERSION);
+        $application = new Application('Resque Console Tool', Version::VERSION);
         $application->setCatchExceptions(true);
         $application->setHelperSet($helperSet);
 
         $application->add(new QueuesCommand());
+        $application->add(new EnqueueCommand());
 
         return $application->run();
     }

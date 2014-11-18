@@ -2,11 +2,6 @@
 
 namespace Resque\Console;
 
-use Doxport\Action\ArchiveDelete;
-use Doxport\ConstraintPass;
-use Doxport\JoinPass;
-use Doxport\Schema;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -27,10 +22,22 @@ class QueuesCommand extends Command
     /**
      * @param InputInterface  $input
      * @param OutputInterface $output
-     * @return void
+     * @return int
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        parent::execute($input, $output);
+        $resque = $this->getResque();
+        $queues = $resque->queues();
+
+        foreach ($queues as $queue) {
+            $size = $resque->size($queue);
+            $output->writeln($queue . " " . $size);
+        }
+
+        if (!count($queues)) {
+            return 1; // If no queues, return error exit code
+        }
+
+        return 0;
     }
 }
