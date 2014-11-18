@@ -82,7 +82,7 @@ class Status
     protected $loaded = false;
 
     /**
-     * @var array<string => mixed>
+     * @var array<string,mixed>
      */
     protected $attributes = array();
 
@@ -136,7 +136,8 @@ class Status
     /**
      * Sets all the given attributes
      *
-     * @param array<string => mixed> $attributes
+     * @param array <string,mixed> $attributes
+     * @return mixed
      */
     public function setAttributes(array $attributes)
     {
