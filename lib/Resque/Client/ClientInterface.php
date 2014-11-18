@@ -23,9 +23,19 @@ interface ClientInterface
     public function disconnect();
 
     /**
+     * @return self
+     */
+    public function pipeline();
+
+    /**
      * @return boolean
      */
     public function isConnected();
+
+    /**
+     * @param int $db
+     */
+    public function flushdb($db = null);
 
     /**
      * @param string $key
@@ -43,6 +53,18 @@ interface ClientInterface
      * @param string $value
      */
     public function set($key, $value);
+
+    /**
+     * @param string $key
+     * @return bool
+     */
+    public function exists($key);
+
+    /**
+     * @param string $key
+     * @param int    $ttl
+     */
+    public function expire($key, $ttl);
 
     /**
      * @param string  $key
@@ -99,7 +121,7 @@ interface ClientInterface
 
     /**
      * @param string $key
-     * @return array
+     * @return array<string,mixed>
      */
     public function hgetall($key);
 
@@ -111,13 +133,10 @@ interface ClientInterface
     public function hmset($key, array $hash);
 
     /**
-     * @param int $db
+     * @param $key
+     * @param $field
+     * @param $increment
+     * @return int The value at field after the increment operation
      */
-    public function flushdb($db = null);
-
-    /**
-     * @param string $key
-     * @param int    $ttl
-     */
-    public function expire($key, $ttl);
+    public function hincrby($key, $field, $increment);
 }

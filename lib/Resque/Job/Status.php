@@ -136,7 +136,7 @@ class Status
     /**
      * Sets all the given attributes
      *
-     * @param array <string,mixed> $attributes
+     * @param array<string,mixed> $attributes
      * @return mixed
      */
     public function setAttributes(array $attributes)
@@ -185,10 +185,10 @@ class Status
      */
     public function incrementAttribute($name, $by = 1)
     {
-        $result = $this->client->pipeline(function ($redis) use ($name, $by) {
-            $redis->hincrby($this->getHashKey(), $name, $by);
-            $redis->hset($this->getHashKey(), 'updated', time());
-        });
+        $pipeline = $this->client->pipeline();
+        $pipeline->hincrby($this->getHashKey(), $name, $by);
+        $pipeline->hset($this->getHashKey(), 'updated', time());
+        $result = $pipeline->execute();
 
         return $this->attributes[$name] = $result[0];
     }
