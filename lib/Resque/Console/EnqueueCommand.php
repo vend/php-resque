@@ -56,7 +56,7 @@ class EnqueueCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $resque = $this->getResque();
+        $resque = $this->getResque($output);
         $queue = $input->getArgument('queue');
 
         $id = $resque->enqueue(

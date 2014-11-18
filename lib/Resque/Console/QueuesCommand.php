@@ -26,7 +26,7 @@ class QueuesCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $resque = $this->getResque();
+        $resque = $this->getResque($output);
         $queues = $resque->queues();
 
         foreach ($queues as $queue) {
