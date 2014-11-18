@@ -19,9 +19,16 @@ namespace Resque\Client;
  */
 interface ClientInterface
 {
+    public function connect();
+    public function disconnect();
+
+    /**
+     * @return boolean
+     */
+    public function isConnected();
+
     /**
      * @param string $key
-     *
      * @return string
      */
     public function get($key);
@@ -38,20 +45,19 @@ interface ClientInterface
     public function set($key, $value);
 
     /**
-     * @param string $key
+     * @param string  $key
      * @param integer $int
      */
     public function incrby($key, $int);
 
     /**
-     * @param string $key
+     * @param string  $key
      * @param integer $int
      */
     public function decrby($key, $int);
 
     /**
      * @param string $key
-     *
      * @return string
      */
     public function lpop($key);
@@ -90,14 +96,26 @@ interface ClientInterface
      */
     public function srem($key, $value);
 
+    /**
+     * @param string $key
+     * @return array
+     */
     public function hgetall($key);
+
+    /**
+     * @param string $key
+     * @param array  $hash
+     */
     public function hmset($key, array $hash);
 
+    /**
+     * @param int $db
+     */
     public function flushdb($db = null);
 
-    public function isConnected();
-    public function disconnect();
-    public function connect();
-
+    /**
+     * @param string $key
+     * @param int    $ttl
+     */
     public function expire($key, $ttl);
 }
