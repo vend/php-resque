@@ -1,6 +1,8 @@
 # Resque for PHP
 ## Namespaced Fork
 
+![Travis](https://travis-ci.org/vend/php-resque.svg?branch=master)
+
 [Resque](https://github.com/resque/resque) is a Redis-backed library for creating background jobs, placing
 those jobs on one or more queues, and processing them later.
 
@@ -12,7 +14,7 @@ This library (`vend/resque`) is a fork of [chrisboulton/php-resque](https://gith
 version 1.3, that has been refactored to remove global state, add namespacing, and improve
 decoupling. This makes it easier to use and extend.
 
-## Getting Started ##
+## Getting Started
 
 Add `vend/resque` to your application's composer.json.
 
