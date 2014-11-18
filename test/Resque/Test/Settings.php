@@ -110,6 +110,16 @@ class Settings implements LoggerAwareInterface
                     'db'     => $this->db,
                     'prefix' => $this->prefix
                 ));
+            case 'phpiredis':
+                return new \Predis\Client(array(
+                    'host'   => $this->host,
+                    'port'   => $this->port,
+                    'db'     => $this->db,
+                    'prefix' => $this->prefix
+                ), array(
+                    'tcp'  => 'Predis\Connection\PhpiredisStreamConnection',
+                    'unix' => 'Predis\Connection\PhpiredisSocketConnection'
+                ));
             case 'credis':
             case 'phpredis':
                 $client = new \Resque\Client\CredisClient($this->host, $this->port);
