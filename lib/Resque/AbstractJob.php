@@ -4,11 +4,9 @@ namespace Resque;
 
 use \ArrayAccess;
 use \ArrayIterator;
-use Exception;
 use \InvalidArgumentException;
 use \IteratorAggregate;
 use Resque\Exception\JobLogicException;
-use Resque\Failure;
 use Resque\Job\Status;
 use Resque\Resque;
 

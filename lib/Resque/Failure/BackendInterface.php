@@ -21,6 +21,7 @@ interface BackendInterface
      * @param \Exception $exception Instance of the exception that was thrown by the failed job.
      * @param Worker $worker Instance of Worker that received the job.
      * @param string $queue The name of the queue the job was fetched from.
+     * @return void
      */
     public function receiveFailure($payload, Exception $exception, Worker $worker, $queue);
 }

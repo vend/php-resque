@@ -41,7 +41,7 @@ class Statistic
     /**
      * Get the value of the supplied statistic counter for the specified statistic.
      *
-     * @return mixed Value of the statistic.
+     * @return integer Value of the statistic.
      */
     public function get()
     {

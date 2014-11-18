@@ -17,6 +17,7 @@ interface JobInterface
      *
      * @param string $queue
      * @param array $payload
+     * @return void
      */
     public function __construct($queue, array $payload);
 

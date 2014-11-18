@@ -158,7 +158,7 @@ class Status
      * Sets an attribute
      *
      * @param string $name
-     * @param mixed  $value
+     * @param string  $value
      */
     public function setAttribute($name, $value)
     {

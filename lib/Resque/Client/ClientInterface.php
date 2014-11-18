@@ -19,20 +19,75 @@ namespace Resque\Client;
  */
 interface ClientInterface
 {
+    /**
+     * @param string $key
+     *
+     * @return string
+     */
     public function get($key);
+
+    /**
+     * @param string $key
+     */
     public function del($key);
+
+    /**
+     * @param string $key
+     * @param string $value
+     */
     public function set($key, $value);
 
+    /**
+     * @param string $key
+     * @param integer $int
+     */
     public function incrby($key, $int);
+
+    /**
+     * @param string $key
+     * @param integer $int
+     */
     public function decrby($key, $int);
 
+    /**
+     * @param string $key
+     *
+     * @return string
+     */
     public function lpop($key);
+
+    /**
+     * @param string $key
+     */
     public function llen($key);
+
+    /**
+     * @param string $key
+     * @param string $value
+     */
     public function rpush($key, $value);
 
+    /**
+     * @param string $key
+     */
     public function smembers($key);
+
+    /**
+     * @param string $key
+     * @param string $value
+     */
     public function sadd($key, $value);
+
+    /**
+     * @param string $key
+     * @param string $value
+     */
     public function sismember($key, $value);
+
+    /**
+     * @param string $key
+     * @param string $value
+     */
     public function srem($key, $value);
 
     public function hgetall($key);
