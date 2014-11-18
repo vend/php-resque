@@ -8,7 +8,7 @@ php:
 env:
   - RESQUE_CLIENT_TYPE=predis
   - RESQUE_CLIENT_TYPE=credis
-  - RESQUE_CLIENT_TYPE=phpredis
+#  - RESQUE_CLIENT_TYPE=phpredis (broken by https://github.com/nicolasff/phpredis/issues/474)
   - RESQUE_CLIENT_TYPE=phpiredis
 
 before_script:
