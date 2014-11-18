@@ -63,7 +63,7 @@ class Worker implements LoggerAwareInterface
     protected $currentJob = null;
 
     /**
-     * @var array<mixed>
+     * @var array<string,mixed>
      */
     protected $options = array();
 
@@ -108,7 +108,7 @@ class Worker implements LoggerAwareInterface
     /**
      * Configures options for the worker
      *
-     * @param array $options
+     * @param array<string,mixed> $options
      *   Including
      *     Worker identification
      *       - server_name      => string, default is FQDN hostname
@@ -118,8 +118,6 @@ class Worker implements LoggerAwareInterface
      *                               out of worker ID
      *       - shuffle_queues   => bool, whether to shuffle the queues on reserve, so we evenly check all queues
      *       - sort_queues      => bool, whether to check the queues in alphabetical order (mutually exclusive with shuffle_queues)
-     *
-     * @see Resque\Util.Configurable::configure()
      */
     protected function configure(array $options)
     {
@@ -203,7 +201,7 @@ class Worker implements LoggerAwareInterface
      * interrogate the properties of other workers given their ID.
      *
      * @throws Exception
-     * @return array(string hostname, int pid)
+     * @return array<string,int>
      */
     protected function getLocation()
     {
@@ -381,7 +379,7 @@ class Worker implements LoggerAwareInterface
     {
         try {
             $status = $this->resque->getStatusFactory()->forJob($job);
-            $success = $status->update(Status::STATUS_FAILED);
+            $status->update(Status::STATUS_FAILED);
         } catch (JobIdException $e) {
             $this->logger->warning($e);
         }
@@ -455,7 +453,7 @@ class Worker implements LoggerAwareInterface
      *
      * @throws \RuntimeException
      * @throws \Exception
-     * @return int|false -1 if the fork failed, 0 for the forked child, the PID of the child for the parent.
+     * @return int -1 if the fork failed, 0 for the forked child, the PID of the child for the parent.
      */
     private function fork()
     {
@@ -750,7 +748,7 @@ class Worker implements LoggerAwareInterface
     /**
      * Return an object describing the job this worker is currently working on.
      *
-     * @return object Object with details of current job.
+     * @return array Object with details of current job.
      */
     public function job()
     {

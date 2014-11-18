@@ -13,9 +13,10 @@ class ClientTest extends Test
             'four'  => 1.0 / 3
         );
 
-        $this->redis->hmset('some_other_key', $values);
-        $hash = $this->redis->hgetall('some_other_key');
+        $success  = $this->redis->hmset('some_other_key', $values);
+        $hash     = $this->redis->hgetall('some_other_key');
 
-        $this->assertEquals($values, $hash);
+        $this->assertTrue((boolean)$success, 'HMSET command returns success');
+        $this->assertEquals($values, $hash, 'HGETALL command returns array');
     }
 }

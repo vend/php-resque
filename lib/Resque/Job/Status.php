@@ -87,7 +87,7 @@ class Status
     protected $attributes = array();
 
     /**
-     * @var \Resque\ClientInterface
+     * @var \Resque\Client\ClientInterface
      */
     protected $client;
 
@@ -198,9 +198,9 @@ class Status
      * This method is called from setAttribute/s so that the expiry can be
      * properly updated.
      *
-     * @param int The status of the job (see constants in Resque\Job\Status)
+     * @param int $status The status of the job (see constants in Resque\Job\Status)
      * @throws \InvalidArgumentException
-     * @return void
+     * @return boolean
      */
     public function update($status)
     {
@@ -209,7 +209,7 @@ class Status
         }
 
         if (!$this->isTracking()) {
-            return;
+            return false;
         }
 
         $this->attributes['status'] = $status;
@@ -227,7 +227,7 @@ class Status
             $this->client->expire($this->getHashKey(), self::INCOMPLETE_TTL);
         }
 
-        return $success;
+        return (boolean)$success;
     }
 
     /**
@@ -263,7 +263,7 @@ class Status
     }
 
     /**
-     * @return array<string => mixed>
+     * @return array<string,mixed>
      */
     public function getAll()
     {
@@ -331,7 +331,6 @@ class Status
         }
 
         // Could be just hget, but Credis will return false?!
-        $key = $this->getHashKey();
         $attributes = $this->client->hGetAll($this->getHashKey());
         return isset($attributes[$name]) ? $attributes[$name] : $default;
     }
@@ -361,7 +360,7 @@ class Status
     /**
      * Accessor to return valid statuses
      *
-     * @return \Resque\Job\array<int>
+     * @return array<int>
      */
     public function getValid()
     {
@@ -371,7 +370,7 @@ class Status
     /**
      * Accessor to return complete statuses
      *
-     * @return \Resque\Job\array<int>
+     * @return array<int>
      */
     public function getComplete()
     {
