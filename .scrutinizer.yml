@@ -1,0 +1,19 @@
+# vim: set sw=4 ts=4 et :
+imports:
+    - php
+
+filter:
+    # Trailing slash is converted to /*
+    excluded_paths:
+        - test/
+        - build/
+
+tools:
+    # Inherited:
+    # php_analyzer
+    # php_pdepend
+    # php_sim
+
+    external_code_coverage:
+        timeout: 600
+
