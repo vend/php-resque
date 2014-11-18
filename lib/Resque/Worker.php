@@ -201,7 +201,7 @@ class Worker implements LoggerAwareInterface
      * interrogate the properties of other workers given their ID.
      *
      * @throws Exception
-     * @return array(string hostname, int pid)
+     * @return array<string,int>
      */
     protected function getLocation()
     {
@@ -379,7 +379,7 @@ class Worker implements LoggerAwareInterface
     {
         try {
             $status = $this->resque->getStatusFactory()->forJob($job);
-            $success = $status->update(Status::STATUS_FAILED);
+            $status->update(Status::STATUS_FAILED);
         } catch (JobIdException $e) {
             $this->logger->warning($e);
         }
@@ -453,7 +453,7 @@ class Worker implements LoggerAwareInterface
      *
      * @throws \RuntimeException
      * @throws \Exception
-     * @return int|false -1 if the fork failed, 0 for the forked child, the PID of the child for the parent.
+     * @return int -1 if the fork failed, 0 for the forked child, the PID of the child for the parent.
      */
     private function fork()
     {
@@ -748,7 +748,7 @@ class Worker implements LoggerAwareInterface
     /**
      * Return an object describing the job this worker is currently working on.
      *
-     * @return object Object with details of current job.
+     * @return array Object with details of current job.
      */
     public function job()
     {

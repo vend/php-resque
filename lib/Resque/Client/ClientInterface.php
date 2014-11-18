@@ -105,6 +105,7 @@ interface ClientInterface
     /**
      * @param string $key
      * @param array  $hash
+     * @return boolean|\Predis\Response\ResponseInterface
      */
     public function hmset($key, array $hash);
 
