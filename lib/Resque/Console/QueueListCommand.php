@@ -5,7 +5,7 @@ namespace Resque\Console;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class QueuesCommand extends Command
+class QueueListCommand extends Command
 {
     /**
      * @return void
@@ -15,7 +15,7 @@ class QueuesCommand extends Command
         parent::configure();
 
         $this
-            ->setName('queues')
+            ->setName('queue:list')
             ->setDescription('Outputs information about queues');
     }
 
@@ -35,6 +35,7 @@ class QueuesCommand extends Command
         }
 
         if (!count($queues)) {
+            $output->writeln('No queues');
             return 1; // If no queues, return error exit code
         }
 

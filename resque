@@ -1,9 +1,9 @@
 #!/usr/bin/env php
 <?php
 
-use Resque\Console\ConsoleRunner;
 
-(@include_once __DIR__ . '/vendor/autoload.php') || @include_once __DIR__ . '/../../autoload.php';
+
+use Resque\Console\ConsoleRunner;
 
 $directories = array(
     getcwd(),

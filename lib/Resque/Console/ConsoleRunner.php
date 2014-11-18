@@ -42,7 +42,8 @@ class ConsoleRunner
         $application->setCatchExceptions(true);
         $application->setHelperSet($helperSet);
 
-        $application->add(new QueuesCommand());
+        $application->add(new QueueListCommand());
+        $application->add(new QueueClearCommand());
         $application->add(new EnqueueCommand());
         $application->add(new WorkerCommand());
 
