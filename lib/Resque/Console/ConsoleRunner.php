@@ -2,6 +2,7 @@
 
 namespace Resque\Console;
 
+use Psr\Log\LoggerInterface;
 use Resque\Client\ClientInterface;
 use Resque\Version;
 use Symfony\Component\Console\Application;
@@ -14,10 +15,11 @@ class ConsoleRunner
      *
      * A convenience method (you could always define your own HelperSet separately). Useful for writing cli-config.php.
      *
-     * @param ClientInterface $client Redis connection
+     * @param ClientInterface          $client Redis connection
+     * @param \Psr\Log\LoggerInterface $logger Optional logger
      * @return HelperSet
      */
-    public static function createHelperSet($client, $logger = null)
+    public static function createHelperSet($client, LoggerInterface $logger = null)
     {
         $helper = new HelperSet();
         $helper->set(new RedisHelper($client));

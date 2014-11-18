@@ -24,15 +24,14 @@ abstract class Command extends CommandComponent
      */
     public function getResque(OutputInterface $output)
     {
-        if ($this->getHelper('logger')) {
-
-        }
-
-
-        $logger = new ConsoleLogger($output);
-
         $resque = new Resque($this->getRedis());
-        $resque->setLogger($logger);
+
+        if (($helper = $this->getHelper('logger'))) {
+            /* @var LoggerHelper $helper */
+            $resque->setLogger($helper->getLogger());
+        } else {
+            $resque->setLogger(new ConsoleLogger($output));
+        }
 
         return $resque;
     }

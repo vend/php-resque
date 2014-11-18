@@ -3,7 +3,6 @@
 namespace Resque\Console;
 
 use Psr\Log\LoggerInterface;
-use Resque\Client\ClientInterface;
 use Symfony\Component\Console\Helper\Helper;
 
 /**
@@ -12,7 +11,7 @@ use Symfony\Component\Console\Helper\Helper;
 class LoggerHelper extends Helper
 {
     /**
-     * @var ClientInterface
+     * @var LoggerInterface
      */
     protected $logger;
 
@@ -25,7 +24,7 @@ class LoggerHelper extends Helper
     }
 
     /**
-     * @return ClientInterface
+     * @return LoggerInterface
      */
     public function getLogger()
     {
