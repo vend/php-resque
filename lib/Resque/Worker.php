@@ -40,6 +40,16 @@ class Worker implements LoggerAwareInterface
     protected $queues = array();
 
     /**
+     * Whether the worker should refresh the list of queues on reserve, or just go with the queues it has been given
+     *
+     * Passing * as a queue name will cause the worker to listen on all queues, and also refresh them (so that you
+     * don't need to restart workers when you add a queue)
+     *
+     * @var boolean
+     */
+    protected $refreshQueues = false;
+
+    /**
      * @var boolean True if on the next iteration, the worker should shutdown.
      */
     protected $shutdown = false;
@@ -54,6 +64,9 @@ class Worker implements LoggerAwareInterface
      */
     protected $currentJob = null;
 
+    /**
+     * @var array<mixed>
+     */
     protected $options = array();
 
     /**
@@ -71,9 +84,8 @@ class Worker implements LoggerAwareInterface
      * on. The list of queues should be supplied in the priority that they should
      * be checked for jobs (first come, first served)
      *
-     * Passing a single '*' allows the worker to work on all queues in alphabetical
-     * order. You can easily add new queues dynamically and have them worked on using
-     * this method.
+     * Passing a single '*' allows the worker to work on all queues.
+     * You can easily add new queues dynamically and have them worked on using this method.
      *
      * @param Resque $resque
      * @param string|array $queues String with a single queue name, array with multiple.
@@ -83,13 +95,14 @@ class Worker implements LoggerAwareInterface
     {
         $this->configure($options);
 
+        $this->queues = is_array($queues) ? $queues : array($queues);
         $this->resque = $resque;
         $this->logger = $this->resque->getLogger();
 
-        if (!is_array($queues)) {
-            $queues = array($queues);
+        if (in_array('*', $this->queues) || empty($this->queues)) {
+            $this->refreshQueues = true;
+            $this->queues = $resque->queues();
         }
-        $this->queues = $queues;
 
         $this->configureId();
     }
@@ -105,6 +118,8 @@ class Worker implements LoggerAwareInterface
      *       - id_format        => string, suitable for sprintf
      *       - id_location_preg => string, Perl compat regex, gets hostname and PID
      *                               out of worker ID
+     *       - shuffle_queues   => bool, whether to shuffle the queues on reserve, so we evenly check all queues
+     *       - sort_queues      => bool, whether to check the queues in alphabetical order (mutually exclusive with shuffle_queues)
      *
      * @see Resque\Util.Configurable::configure()
      */
@@ -117,6 +132,8 @@ class Worker implements LoggerAwareInterface
             'ps_args'          => array('-o', 'pid,state', '-p'),
             'id_format'        => '%s:%d:%s',
             'id_location_preg' => '/^([^:]+?):([0-9]+):/',
+            'shuffle_queues'   => true,
+            'sort_queues'      => false
         ), $this->options);
 
         if (!$this->options['server_name']) {
@@ -387,23 +404,26 @@ class Worker implements LoggerAwareInterface
      */
     public function reserve()
     {
-        $queues = $this->queues();
-
-        if (!is_array($queues)) {
-            return null;
+        if ($this->refreshQueues) {
+            $this->queues = $this->resque->queues();
         }
 
         // Each call to reserve, we check the queues in a different order
-        shuffle($queues);
+        if ($this->options['shuffle_queues']) {
+            shuffle($this->queues);
+        } elseif ($this->options['sort_queues']) {
+            sort($this->queues);
+        }
 
-        $job = false;
-        foreach($queues as $queue) {
+        foreach ($this->queues as $queue) {
             $payload = $this->resque->pop($queue);
+
             if (!is_array($payload)) {
                 continue;
             }
 
             $job = $this->createJobInstance($queue, $payload);
+
             if ($job) {
                 $this->logger->info('Found job on {queue}', array('queue' => $queue));
                 return $job;
@@ -411,28 +431,6 @@ class Worker implements LoggerAwareInterface
         }
 
         return null;
-    }
-
-    /**
-     * Return an array containing all of the queues that this worker should use
-     * when searching for jobs.
-     *
-     * If * is found in the list of queues, every queue will be searched in
-     * alphabetic order. (@see $fetch)
-     *
-     * @param boolean $fetch If true, and the queue is set to *, will fetch
-     * all queue names from redis.
-     * @return array Array of associated queues.
-     */
-    public function queues($fetch = true)
-    {
-        if(!in_array('*', $this->queues) || $fetch == false) {
-            return $this->queues;
-        }
-
-        $queues = $this->resque->queues();
-        sort($queues);
-        return $queues;
     }
 
     /**
