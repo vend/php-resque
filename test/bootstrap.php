@@ -1,7 +1,7 @@
 <?php
 
 $loader = require __DIR__ . '/../vendor/autoload.php';
-$loader->add('Resque', __DIR__);
+$loader->addPsr4('Resque\\', __DIR__);
 
 $build = __DIR__ . '/../build';
 

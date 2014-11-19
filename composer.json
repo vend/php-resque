@@ -17,8 +17,8 @@
     ],
 
     "autoload": {
-        "psr-0": {
-            "": "lib/"
+        "psr-4": {
+            "Resque\\": "src"
         }
     },
 

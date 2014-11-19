@@ -1,8 +1,6 @@
 #!/usr/bin/env php
 <?php
 
-use Resque\Console\ConsoleRunner;
-
 $directories = array(
     getcwd(),
     getcwd() . DIRECTORY_SEPARATOR . 'config'
@@ -28,4 +26,5 @@ if (!is_readable($config)) {
 }
 
 $helperSet = require $config;
-ConsoleRunner::run($helperSet);
+
+Resque\Console\ConsoleRunner::run($helperSet);
