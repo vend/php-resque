@@ -28,12 +28,17 @@ interface ClientInterface
     public function pipeline();
 
     /**
+     * @return boolean|\Predis\Response\ResponseInterface
+     */
+    public function execute();
+
+    /**
      * @return boolean
      */
     public function isConnected();
 
     /**
-     * @param int $db
+     * @param integer $db
      */
     public function flushdb($db = null);
 
@@ -61,22 +66,22 @@ interface ClientInterface
     public function exists($key);
 
     /**
-     * @param string $key
-     * @param int    $ttl
+     * @param string  $key
+     * @param integer $ttl
      */
     public function expire($key, $ttl);
 
     /**
      * @param string  $key
-     * @param integer $int
+     * @param integer $increment
      */
-    public function incrby($key, $int);
+    public function incrby($key, $increment);
 
     /**
      * @param string  $key
-     * @param integer $int
+     * @param integer $decrement
      */
-    public function decrby($key, $int);
+    public function decrby($key, $decrement);
 
     /**
      * @param string $key
@@ -121,6 +126,13 @@ interface ClientInterface
 
     /**
      * @param string $key
+     * @param string $field
+     * @param string $value
+     */
+    public function hset($key, $field, $value);
+
+    /**
+     * @param string $key
      * @return array<string,mixed>
      */
     public function hgetall($key);
@@ -133,10 +145,10 @@ interface ClientInterface
     public function hmset($key, array $hash);
 
     /**
-     * @param $key
-     * @param $field
-     * @param $increment
-     * @return int The value at field after the increment operation
+     * @param string $key
+     * @param string $field
+     * @param integer $increment
+     * @return integer The value at field after the increment operation
      */
     public function hincrby($key, $field, $increment);
 }

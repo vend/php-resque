@@ -413,9 +413,7 @@ class Worker implements LoggerAwareInterface
                 $this->logger->info('Refreshing queues dynamically, but there are no queues yet');
             } else {
                 $this->logger->notice('Not listening to any queues, and dynamic queue refreshing is disabled');
-                $this->killChild();
-                $this->unregister();
-                exit(1);
+                $this->shutdownNow();
             }
         }
 
@@ -478,17 +476,13 @@ class Worker implements LoggerAwareInterface
 
         $this->logger->notice('Forking...');
 
-        $pid = pcntl_fork();
+        $pid = (int)pcntl_fork();
 
         // And reconnect
         $this->resque->connect();
 
         if ($pid === -1) {
             throw new RuntimeException('Unable to fork child worker.');
-        }
-
-        if (!is_numeric($pid)) {
-            throw new RuntimeException('Expected PID or zero from fork');
         }
 
         return $pid;

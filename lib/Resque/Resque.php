@@ -71,8 +71,8 @@ class Resque implements LoggerAwareInterface
     /**
      * Configures the options of the resque background queue system
      *
-     * @param array $options
-     * @return array<string,mixed>
+     * @param array<string,mixed> $options
+     * @return void
      */
     public function configure(array $options)
     {
@@ -349,7 +349,7 @@ class Resque implements LoggerAwareInterface
          *   2 Invalid options were specified on the command line
          *   3 An internal error occurred
          */
-        if ($return !== 0 && $return !== 1) {
+        if (($return !== 0 && $return !== 1) || empty($output) || !is_array($output)) {
             $this->logger->warning('Unable to determine worker PIDs');
             return array();
         }
