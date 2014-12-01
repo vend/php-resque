@@ -2,6 +2,9 @@
 ## Namespaced Fork
 
 [![Build Status](https://travis-ci.org/vend/php-resque.svg?branch=master)](https://travis-ci.org/vend/php-resque)
+[![Latest Stable Version](https://poser.pugx.org/vend/resque/v/stable.svg)](https://packagist.org/packages/vend/resque)
+[![Latest Unstable Version](https://poser.pugx.org/vend/resque/v/unstable.svg)](https://packagist.org/packages/vend/resque)
+[![License](https://poser.pugx.org/vend/resque/license.svg)](https://packagist.org/packages/vend/resque)
 
 [Resque](https://github.com/resque/resque) is a Redis-backed library for creating background jobs, placing
 those jobs on one or more queues, and processing them later.
