@@ -1,6 +1,6 @@
 <?php
 
-namespace Resque\Console;
+namespace Resque\Console\Helper;
 
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Helper\Helper;

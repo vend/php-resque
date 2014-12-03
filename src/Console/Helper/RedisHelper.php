@@ -1,6 +1,6 @@
 <?php
 
-namespace Resque\Console;
+namespace Resque\Console\Helper;
 
 use Resque\Client\ClientInterface;
 use Symfony\Component\Console\Helper\Helper;

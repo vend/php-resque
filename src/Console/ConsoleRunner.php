@@ -7,6 +7,8 @@ use Resque\Client\ClientInterface;
 use Resque\Version;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Helper\HelperSet;
+use Resque\Console\Helper\RedisHelper;
+use Resque\Console\Helper\LoggerHelper;
 
 class ConsoleRunner
 {
