@@ -33,13 +33,15 @@ class EnqueueCommand extends Command
                 'payload',
                 'p',
                 InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
-                'A payload to send with the job'
+                'A payload to send with the job',
+                null
             )
             ->addOption(
                 'json',
                 'j',
                 InputOption::VALUE_REQUIRED,
-                'A JSON payload to send with the job (specify as a JSON encoded string)'
+                'A JSON payload to send with the job (specify as a JSON encoded string)',
+                null
             )
             ->addOption(
                 'track',
@@ -82,7 +84,8 @@ class EnqueueCommand extends Command
      */
     protected function getPayload(InputInterface $input)
     {
-        if ($input->hasOption('payload')) {
+        if ($input->hasOption('payload') &&
+            0 < count($input->getOption('payload'))) {
             return $input->getOption('payload');
         }
 
