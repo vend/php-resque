@@ -372,23 +372,32 @@ class Worker implements LoggerAwareInterface
      *
      * This happens whenever the job's perform() method emits an exception
      *
-     * @param JobInterface $job
+     * @param JobInterface|array $job
      * @param Exception $exception
      */
-    protected function failJob(JobInterface $job, Exception $exception)
+    protected function failJob($job, Exception $exception)
     {
+        if($job instanceof JobInterface) {
+            $payload = $job->getPayload();
+        } else {
+            $payload = $job;
+        }
+
+        $queue_name = $payload['queue'];
+        $job_id = $payload['id'];
+
         try {
-            $status = $this->resque->getStatusFactory()->forJob($job);
+            $status = $this->resque->getStatusFactory()->forId($job_id);
             $status->update(Status::STATUS_FAILED);
         } catch (JobIdException $e) {
             $this->logger->warning($e);
         }
 
         $this->resque->getFailureBackend()->receiveFailure(
-            $job->getPayload(),
+            $payload,
             $exception,
             $this,
-            $job->getQueue()
+            $queue_name
         );
 
         $this->getResque()->getStatistic('failed')->incr();
@@ -445,7 +454,14 @@ class Worker implements LoggerAwareInterface
                 continue;
             }
 
-            $job = $this->createJobInstance($queue, $payload);
+            $payload['queue'] = $queue;
+
+            try {
+                $job = $this->createJobInstance($queue, $payload);
+            } catch (Exception $exception) {
+                $this->failJob($payload, $exception);
+                return null;
+            }
 
             if ($job) {
                 $this->logger->info('Found job on {queue}', array('queue' => $queue));
