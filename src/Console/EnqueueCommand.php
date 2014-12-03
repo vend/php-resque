@@ -90,7 +90,7 @@ class EnqueueCommand extends Command
         }
 
         if ($input->hasOption('json')) {
-            return json_decode($input->getOption('json'));
+            return json_decode($input->getOption('json'), true);
         }
 
         return [];
