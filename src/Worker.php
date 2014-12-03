@@ -181,6 +181,13 @@ class Worker implements LoggerAwareInterface
             throw new JobInvalidException();
         }
 
+        // Somehow when i retry job from resque ruby gui it does not
+        // pass job id. Treat it then as new job.
+        if (!array_key_exists('id', $payload)) {
+            $id = md5(uniqid('', true));
+            $payload['id'] = $id;
+        }
+
         $job = new $payload['class']($queue, $payload);
 
         if (method_exists($job, 'setResque')) {
