@@ -372,23 +372,35 @@ class Worker implements LoggerAwareInterface
      *
      * This happens whenever the job's perform() method emits an exception
      *
-     * @param JobInterface $job
+     * @param JobInterface|array $job
      * @param Exception $exception
      */
-    protected function failJob(JobInterface $job, Exception $exception)
+    protected function failJob($job, Exception $exception)
     {
-        try {
-            $status = $this->resque->getStatusFactory()->forJob($job);
-            $status->update(Status::STATUS_FAILED);
-        } catch (JobIdException $e) {
-            $this->logger->warning($e);
+        if ($job instanceof JobInterface) {
+            $payload = $job->getPayload();
+            $queue   = $job->getQueue();
+        } else {
+            $payload = $job;
+            $queue   = isset($job['queue']) ? $job['queue'] : null;
         }
 
+        $id = isset($job['id']) ? $job['id'] : null;
+
+        if ($id) {
+            try {
+                $status = $this->resque->getStatusFactory()->forId($id);
+                $status->update(Status::STATUS_FAILED);
+            } catch (JobIdException $e) {
+                $this->logger->warning($e);
+            }
+        } // else no status to update
+
         $this->resque->getFailureBackend()->receiveFailure(
-            $job->getPayload(),
+            $payload,
             $exception,
             $this,
-            $job->getQueue()
+            $queue
         );
 
         $this->getResque()->getStatistic('failed')->incr();
@@ -445,7 +457,14 @@ class Worker implements LoggerAwareInterface
                 continue;
             }
 
-            $job = $this->createJobInstance($queue, $payload);
+            $payload['queue'] = $queue;
+
+            try {
+                $job = $this->createJobInstance($queue, $payload);
+            } catch (ResqueException $exception) {
+                $this->failJob($payload, $exception);
+                return null;
+            }
 
             if ($job) {
                 $this->logger->info('Found job on {queue}', array('queue' => $queue));

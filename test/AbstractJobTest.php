@@ -80,13 +80,10 @@ class AbstractJobTest extends Test
         $this->assertEquals(1, $workerFailed->get());
     }
 
-    /**
-     * @expectedException \Resque\ResqueException
-     */
-    public function testInvalidJobThrowsException()
+    public function testInvalidJobReservesNull()
     {
         $this->resque->enqueue('jobs', 'Resque\Test\NoPerformJob');
         $job = $this->worker->reserve();
-        $job->perform();
+        $this->assertNull($job);
     }
 }
