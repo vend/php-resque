@@ -377,7 +377,7 @@ class Worker implements LoggerAwareInterface
      */
     protected function failJob($job, Exception $exception)
     {
-        if($job instanceof JobInterface) {
+        if ($job instanceof JobInterface) {
             $payload = $job->getPayload();
         } else {
             $payload = $job;
@@ -458,7 +458,7 @@ class Worker implements LoggerAwareInterface
 
             try {
                 $job = $this->createJobInstance($queue, $payload);
-            } catch (Exception $exception) {
+            } catch (ResqueException $exception) {
                 $this->failJob($payload, $exception);
                 return null;
             }
