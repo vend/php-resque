@@ -379,25 +379,28 @@ class Worker implements LoggerAwareInterface
     {
         if ($job instanceof JobInterface) {
             $payload = $job->getPayload();
+            $queue   = $job->getQueue();
         } else {
             $payload = $job;
+            $queue   = isset($job['queue']) ? $job['queue'] : null;
         }
 
-        $queue_name = $payload['queue'];
-        $job_id = $payload['id'];
+        $id = isset($job['id']) ? $job['id'] : null;
 
-        try {
-            $status = $this->resque->getStatusFactory()->forId($job_id);
-            $status->update(Status::STATUS_FAILED);
-        } catch (JobIdException $e) {
-            $this->logger->warning($e);
-        }
+        if ($id) {
+            try {
+                $status = $this->resque->getStatusFactory()->forId($id);
+                $status->update(Status::STATUS_FAILED);
+            } catch (JobIdException $e) {
+                $this->logger->warning($e);
+            }
+        } // else no status to update
 
         $this->resque->getFailureBackend()->receiveFailure(
             $payload,
             $exception,
             $this,
-            $queue_name
+            $queue
         );
 
         $this->getResque()->getStatistic('failed')->incr();
