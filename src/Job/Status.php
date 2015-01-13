@@ -128,7 +128,7 @@ class Status
 
         $this->setAttributes(array(
             'status'  => self::STATUS_WAITING,
-            'started' => time(),
+            'created' => time(),
             'updated' => time()
         ));
     }
