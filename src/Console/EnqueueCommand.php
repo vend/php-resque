@@ -93,6 +93,6 @@ class EnqueueCommand extends Command
             return json_decode($input->getOption('json'), true);
         }
 
-        return [];
+        return array();
     }
 }
