@@ -97,10 +97,10 @@ To fetch the status of a job:
 $factory = new Resque\Job\StatusFactory($resque);
 
 // Pass the ID returned from enqueue
-$status = $factory->getForId($id);
+$status = $factory->forId($id);
 
 // Alternatively, to get the status for a Job instance:
-$status = $factory->getForJob($job);
+$status = $factory->forJob($job);
 
 // Outputs the status as a string: 'waiting', 'running', 'complete', etc.
 echo $status->getStatus();
