@@ -65,6 +65,42 @@ class StatusTest extends Test
         $this->assertEquals(Status::STATUS_WAITING, $status->get());
     }
 
+    public function testQueuedJobReturnsCreatedAndUpdatedKeys()
+    {
+        $token = $this->resque->enqueue('jobs', 'Resque\Test\Job', null, true);
+        $status = new Status($token, $this->resque);
+        $this->assertGreaterThan(0, $status->getCreated());
+        $this->assertGreaterThan(0, $status->getUpdated());
+    }
+
+    public function testStartingQueuedJobUpdatesUpdatedAtStatus()
+    {
+        $this->resque->clearQueue('jobs');
+
+        $token = $this->resque->enqueue('jobs', 'Resque\Test\Job', null, true);
+
+        $status = new Status($token, $this->resque);
+        $old_created = $status->getCreated();
+        $old_updated = $status->getUpdated();
+
+        sleep(1);
+
+        $worker = $this->getWorker('jobs');
+
+        $job = $worker->reserve();
+
+        if (!$job) {
+            $this->fail('Cannot get job');
+        }
+
+        $worker->workingOn($job);
+
+        $status = new Status($token, $this->resque);
+        $this->assertEquals(Status::STATUS_RUNNING, $status->get());
+        $this->assertEquals($old_created, $status->getCreated());
+        $this->assertGreaterThan($old_updated, $status->getUpdated());
+    }
+
     public function testRunningJobReturnsRunningStatus()
     {
         $this->resque->clearQueue('jobs');
